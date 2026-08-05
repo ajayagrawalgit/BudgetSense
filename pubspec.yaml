@@ -27,7 +27,7 @@ dependencies:
   path: ^1.9.0
 
   # Formatting / i18n
-  intl: ^0.19.0
+  intl: ^0.20.3
 
   # Preferences (lightweight key/value for settings)
   shared_preferences: ^2.2.3
