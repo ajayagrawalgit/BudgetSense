@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Spend-activity ("No-spend days") widget. It fills the width of wherever it is
+  placed (more weeks show on wider phones) and keeps a fixed row height, so it is
+  horizontally resizable only. Defaults to a wide, short calendar strip.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="5"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="600dp"
+    android:maxResizeHeight="130dp"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_no_spend"
+    android:previewImage="@mipmap/ic_launcher"
+    android:description="@string/widget_no_spend_desc"
+    android:resizeMode="horizontal"
+    android:widgetCategory="home_screen" />

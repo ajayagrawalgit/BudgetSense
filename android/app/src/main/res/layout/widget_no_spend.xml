@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Spend-activity widget. Two SEPARATE components so the dimensions never skew:
+    1. The background is a real native drawable on the FrameLayout (crisp rounded
+       card, or a frosted-glass panel under the transparent theme). It scales
+       cleanly and its corners/edges never distort.
+    2. The content (branding, calendar, footer, legend) is a transparent bitmap
+       drawn by NoSpendWidgetProvider and shown with scaleType="fitCenter", so it
+       scales UNIFORMLY (never stretched) inside the card.
+  NoSpendWidgetProvider swaps the FrameLayout background between the paper card
+  and the glass panel at runtime.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/no_spend_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_no_spend_card">
+
+    <ImageView
+        android:id="@+id/no_spend_grid"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:contentDescription="@string/widget_no_spend_desc"
+        android:importantForAccessibility="no" />
+</FrameLayout>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night-mode home-screen widget palette. Follows the SYSTEM dark setting
+         (not the in-app theme choice). Values mirror the app's dark palette so a
+         dark widget reads as the same product. -->
+    <color name="widget_paper">#2C2B27</color>
+    <color name="widget_paper_alt">#23221F</color>
+    <color name="widget_ink">#E6E2D8</color>
+    <color name="widget_ink_soft">#B4B0A6</color>
+    <color name="widget_ink_faint">#817E76</color>
+    <color name="widget_border">#44423B</color>
+    <color name="widget_accent">#B07C5E</color>
+    <color name="widget_positive">#8AA585</color>
+    <color name="widget_negative">#C08379</color>
+    <color name="widget_on_accent">#1E1D1A</color>
+    <!-- Note: ic_launcher_background is intentionally NOT overridden here. The
+         foreground ink is dark, so a dark icon background would render the mark
+         invisible. The launcher icon stays cream in both light and dark. -->
+</resources>

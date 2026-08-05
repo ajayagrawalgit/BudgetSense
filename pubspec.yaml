@@ -1,0 +1,99 @@
+name: budgetsense
+description: >-
+  BudgetSense - a calm, offline-first personal finance journal for Android & iOS.
+  Muji-inspired minimal design. Local-first, privacy-focused, cloud-ready.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management
+  flutter_riverpod: ^2.5.1
+
+  # Navigation
+  go_router: ^14.2.0
+
+  # Local database (type-safe SQL)
+  drift: ^2.18.0
+  sqlite3: ^2.4.0
+  sqlite3_flutter_libs: ^0.5.20
+  path_provider: ^2.1.3
+  path: ^1.9.0
+
+  # Formatting / i18n
+  intl: ^0.19.0
+
+  # Preferences (lightweight key/value for settings)
+  shared_preferences: ^2.2.3
+
+  # Notifications (local scheduling)
+  flutter_local_notifications: ^17.1.2
+  timezone: ^0.9.4
+
+  # Export
+  csv: ^6.0.0
+  excel: ^4.0.6
+  share_plus: ^9.0.0
+
+  # XML read/write for the full-snapshot export format. Already resolved
+  # transitively via excel; promoted to a direct dependency (no new download).
+  xml: ^6.6.0
+
+  # Security (biometric / pin lock scaffolding)
+  local_auth: ^2.2.0
+
+  # File picking (backup restore)
+  file_picker: ^8.0.5
+
+  # Utilities
+  uuid: ^4.4.0
+  collection: ^1.18.0
+
+  # Opening external links (author credits, source repo)
+  url_launcher: ^6.3.0
+  cryptography: ^2.7.0
+  flutter_secure_storage: ^9.2.2
+  http: ^1.2.0
+  google_sign_in: ^7.0.0
+  googleapis: ^13.2.0
+  package_info_plus: ^9.0.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.11
+  drift_dev: ^2.18.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/branding/
+  fonts:
+    # Refined UI alternative to the system font.
+    - family: ZenMaruGothic
+      fonts:
+        - asset: assets/fonts/ZenMaruGothic-Regular.ttf
+        - asset: assets/fonts/ZenMaruGothic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/ZenMaruGothic-Bold.ttf
+          weight: 700
+    # Aesthetic handwritten faces for the journal feel.
+    - family: Caveat
+      fonts:
+        - asset: assets/fonts/Caveat-Regular.ttf
+    - family: PatrickHand
+      fonts:
+        - asset: assets/fonts/PatrickHand-Regular.ttf
+    - family: GochiHand
+      fonts:
+        - asset: assets/fonts/GochiHand-Regular.ttf
+    - family: ArchitectsDaughter
+      fonts:
+        - asset: assets/fonts/ArchitectsDaughter-Regular.ttf

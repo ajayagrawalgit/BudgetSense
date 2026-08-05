@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "Where it went": the month's top spending categories as calm bars, each scaled
+  relative to the biggest. Rows are generic (cat_row1..4) and filled dynamically
+  by BucketsWidgetProvider from whatever categories the user has created; empty
+  rows are hidden. Nothing here names or assumes any specific category.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/widget_ink_soft"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:text="@string/widget_where_it_went" />
+        <TextView
+            android:id="@+id/month_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/widget_ink_faint"
+            android:textSize="12sp"
+            android:text="This month" />
+    </LinearLayout>
+
+    <!-- Row 1 -->
+    <LinearLayout
+        android:id="@+id/cat_row1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="10dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/cat_label1"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/widget_ink_soft"
+                android:textSize="12sp"
+                android:text="@string/widget_placeholder" />
+            <TextView
+                android:id="@+id/cat_value1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/widget_ink"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:text="@string/widget_placeholder" />
+        </LinearLayout>
+        <ProgressBar
+            android:id="@+id/cat_bar1"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="7dp"
+            android:layout_marginTop="3dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/widget_bar_accent" />
+    </LinearLayout>
+
+    <!-- Row 2 -->
+    <LinearLayout
+        android:id="@+id/cat_row2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/cat_label2"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/widget_ink_soft"
+                android:textSize="12sp"
+                android:text="@string/widget_placeholder" />
+            <TextView
+                android:id="@+id/cat_value2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/widget_ink"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:text="@string/widget_placeholder" />
+        </LinearLayout>
+        <ProgressBar
+            android:id="@+id/cat_bar2"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="7dp"
+            android:layout_marginTop="3dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/widget_bar_info" />
+    </LinearLayout>
+
+    <!-- Row 3 -->
+    <LinearLayout
+        android:id="@+id/cat_row3"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/cat_label3"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/widget_ink_soft"
+                android:textSize="12sp"
+                android:text="@string/widget_placeholder" />
+            <TextView
+                android:id="@+id/cat_value3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/widget_ink"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:text="@string/widget_placeholder" />
+        </LinearLayout>
+        <ProgressBar
+            android:id="@+id/cat_bar3"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="7dp"
+            android:layout_marginTop="3dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/widget_bar_plum" />
+    </LinearLayout>
+
+    <!-- Row 4 -->
+    <LinearLayout
+        android:id="@+id/cat_row4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:id="@+id/cat_label4"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:textColor="@color/widget_ink_soft"
+                android:textSize="12sp"
+                android:text="@string/widget_placeholder" />
+            <TextView
+                android:id="@+id/cat_value4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/widget_ink"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:text="@string/widget_placeholder" />
+        </LinearLayout>
+        <ProgressBar
+            android:id="@+id/cat_bar4"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="7dp"
+            android:layout_marginTop="3dp"
+            android:max="100"
+            android:progress="0"
+            android:progressDrawable="@drawable/widget_bar_negative" />
+    </LinearLayout>
+</LinearLayout>

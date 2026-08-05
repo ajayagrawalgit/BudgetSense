@@ -1,0 +1,123 @@
+name: CI
+
+# Full, fail-closed quality gate. Runs on every PR to main and is callable by
+# other workflows (release.yml) so the gate lives in exactly one place.
+#
+# NOTE ON ACTION PINNING: third-party actions below use version tags for
+# readability. For maximum supply-chain hardening they should be pinned to
+# immutable commit SHAs (e.g. via the `pin-github-action` tool, which needs
+# network access to resolve them). This is tracked in the production-readiness
+# audit as a recommended follow-up.
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: the gate only needs to read the repository.
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.44.4
+
+jobs:
+  quality:
+    name: Format, analyze, test, coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # Drift's app_database.g.dart is gitignored, so it must be regenerated
+      # before anything will compile.
+      - name: Generate code (Drift/build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Fail if generated code is not reproducible / out of date relative to
+      # sources. (Only tracked files are checked; generated files are ignored.)
+      - name: Verify generated code is current
+        run: |
+          if [ -n "$(git status --porcelain -- '*.dart' ':!*.g.dart' ':!*.freezed.dart')" ]; then
+            echo "Tracked sources changed after codegen. Commit the changes."
+            git --no-pager diff --stat
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Placeholder / debug-config scan
+        run: bash scripts/check_placeholders.sh
+
+      - name: Run tests with coverage (serial, deterministic)
+        run: flutter test --coverage --concurrency=1 --reporter expanded
+
+      - name: Enforce coverage gate (>=70%, no critical file at 0%)
+        run: python3 tool/coverage_report.py --threshold 70
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: warn
+
+  build:
+    name: Release build validation (unsigned)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: quality
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate code (Drift/build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Proves the release APK actually builds. Without CI signing secrets this
+      # produces an UNSIGNED release APK, which is the honest, distributable-only
+      # -after-signing state. Never debug-signed.
+      - name: Build release APK
+        run: flutter build apk --release --build-name=0.1.0 --build-number=1
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: budgetsense-release-apk
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error

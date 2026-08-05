@@ -1,0 +1,51 @@
+name: Security
+
+# Blocking security controls. None of these use continue-on-error: a real
+# finding fails the workflow. Runs on PRs, pushes to main, and weekly so newly
+# disclosed vulnerabilities in pinned dependencies are caught over time.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so historical leaks are caught too
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  dependency-vulns:
+    name: Dependency vulnerabilities (OSV-Scanner)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Scans pubspec.lock (committed) and other manifests against the OSV
+      # database. Fails the job when a known vulnerability is present.
+      - name: OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
+            --recursive
+            ./

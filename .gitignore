@@ -1,0 +1,65 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+# NOTE: pubspec.lock IS committed. BudgetSense is an application (not a
+# published package), so the lockfile is required for reproducible builds and
+# deterministic CI. Do not re-add it here.
+
+# Generated code
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+*.env
+*.keystore
+*.jks
+key.properties
+android/app/upload-keystore.jks
+android/app/*.jks
+
+# Local DB / user data (PII, never commit)
+*.sqlite
+*.db
+*.db-journal
+budgetsense.sqlite
+
+# Platform build artifacts
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+android/.gradle/
+android/build/
+android/flutter-engine-repo/
+android/local.properties
+android/key.properties
+
+# Build outputs / distributables (never commit binaries)
+dist/
+*.apk
+*.aab
+*.ipa
+
+# Coverage
+coverage/
+
+# Local signing config (never commit). See android/key.properties.example.
+android/app/*.keystore

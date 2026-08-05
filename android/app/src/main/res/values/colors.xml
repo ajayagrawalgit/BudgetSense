@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- BudgetSense paper palette, mirrored for the home-screen widgets so they
+         match the app's calm ink-on-paper look regardless of launcher theme. -->
+    <color name="widget_paper">#FAF5EA</color>
+    <color name="widget_paper_alt">#F3ECDE</color>
+    <color name="widget_ink">#262219</color>
+    <color name="widget_ink_soft">#5C574A</color>
+    <color name="widget_ink_faint">#8C887C</color>
+    <color name="widget_border">#E0D8C6</color>
+    <color name="widget_accent">#B07C5E</color>
+    <color name="widget_positive">#5B7A5B</color>
+    <color name="widget_negative">#A8574B</color>
+    <color name="widget_info">#7E97A6</color>
+    <color name="widget_plum">#8E6E7E</color>
+    <color name="widget_on_accent">#FBF6EE</color>
+
+    <!-- Spend-activity graph: 5-level scale, light (few records) to dark (many),
+         built from the BudgetSense clay accent (NOT green). Used by the
+         spend-activity widget only. -->
+    <color name="widget_grid_l0">#EADFCB</color>
+    <color name="widget_grid_l1">#E3C6AD</color>
+    <color name="widget_grid_l2">#CDA084</color>
+    <color name="widget_grid_l3">#B07C5E</color>
+    <color name="widget_grid_l4">#8A5A3E</color>
+
+    <!-- Frosted glass panel for the transparent (glass) theme: a warm paper
+         frost with a bright edge, so the widget reads as glass over wallpaper. -->
+    <color name="widget_glass_fill">#73FAF5EA</color>
+    <color name="widget_glass_stroke">#66FFFFFF</color>
+
+    <!-- Adaptive launcher icon background (warm cream paper, sampled from art). -->
+    <color name="ic_launcher_background">#F5EAD1</color>
+</resources>

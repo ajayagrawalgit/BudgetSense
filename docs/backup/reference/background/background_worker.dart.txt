@@ -1,0 +1,94 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:workmanager/workmanager.dart';
+
+import '../../core/constants/app_info.dart';
+import '../database/app_database.dart';
+import '../snapshot/app_snapshot_service.dart';
+import 'cloud_metadata_store.dart';
+import 'cloud_stores.dart';
+import 'cloud_sync_controller.dart';
+import 'encryption_service.dart';
+import 'google_drive_gateway.dart';
+import 'mutation_tracker.dart';
+
+/// Background sync entry point (Phase 7), executed by WorkManager in a separate
+/// isolate.
+///
+/// DEVICE-ONLY: this path cannot run in CI and must be verified on a real
+/// device (see docs/backup/GOOGLE_DRIVE_SETUP.md). The logic it drives (encrypt,
+/// upload, validate, retry) is the same [CloudSyncController] covered by tests
+/// with fakes. Rules enforced here:
+///   * No interactive authentication (silent only).
+///   * Exit successfully with no network when cloud backup is disabled.
+///   * Return `Future.value(false)` (retry) for transient failures.
+///   * Never log snapshot contents.
+///
+/// Must be a top-level function so WorkManager can find it after a cold start.
+@pragma('vm:entry-point')
+void cloudSyncCallbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    AppDatabase? db;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final kv = PrefsKeyValueStore(prefs);
+      final meta =
+          CloudSyncMetadataStore(kv: kv, secrets: FlutterSecureSecretStore());
+
+      // Cheap exit: nothing to do, no network, if disabled or not pending.
+      if (!meta.enabled) return true;
+      final tracker = BackupMutationTracker(kv);
+      if (!tracker.isPending) return true;
+
+      db = AppDatabase();
+      final snapshot = AppSnapshotService(
+        db,
+        appVersion: AppInfo.version,
+        readSettings: () async => _readSettings(prefs),
+        writeSettings: (s) async => _writeSettings(prefs, s),
+      );
+      final auth = GoogleDriveAuthGateway();
+      final controller = CloudSyncController(
+        snapshot: snapshot,
+        encryption: SnapshotEncryptionService(),
+        auth: auth,
+        gateway: GoogleDriveBackupGateway(auth),
+        metadata: meta,
+        tracker: tracker,
+      );
+
+      // Silent auth only; no prompts from the background.
+      final account = await auth.signInSilently();
+      if (account == null) {
+        // Cannot proceed without interactive sign-in; do not spin retries.
+        return true;
+      }
+      await controller.syncNow();
+      // If still pending after the attempt (transient failure), ask for retry.
+      return !tracker.isPending;
+    } catch (_) {
+      // Transient/unknown: request a retry with WorkManager backoff.
+      return false;
+    } finally {
+      await db?.close();
+    }
+  });
+}
+
+Map<String, Object?> _readSettings(SharedPreferences prefs) {
+  final raw = prefs.getString('budgetsense.settings.v1');
+  if (raw == null) return const {};
+  try {
+    return Map<String, Object?>.from(jsonDecode(raw) as Map);
+  } catch (_) {
+    return const {};
+  }
+}
+
+Future<void> _writeSettings(
+  SharedPreferences prefs,
+  Map<String, Object?> settings,
+) async {
+  await prefs.setString('budgetsense.settings.v1', jsonEncode(settings));
+}

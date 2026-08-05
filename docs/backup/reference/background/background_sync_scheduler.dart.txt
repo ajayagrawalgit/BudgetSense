@@ -1,0 +1,37 @@
+import 'package:workmanager/workmanager.dart';
+
+import 'cloud_constants.dart';
+import 'cloud_sync_state.dart';
+
+/// WorkManager-backed [BackgroundSyncScheduler] (Phase 7).
+///
+/// Registers ONE unique, network-constrained, backoff-retried sync job that
+/// survives process and (on Android) device restarts. The actual work runs in a
+/// background isolate via [Workmanager.executeTask]; the isolate must NOT do
+/// interactive authentication and must exit cleanly when cloud backup is off.
+///
+/// The callback dispatcher and isolate wiring must be registered in
+/// `main()`/native code; this adapter only schedules and cancels. Not exercised
+/// in CI (no WorkManager in tests); a [NoopBackgroundSyncScheduler] is used
+/// there. Verify on a real device (see docs/backup/GOOGLE_DRIVE_SETUP.md).
+class WorkManagerBackgroundSyncScheduler implements BackgroundSyncScheduler {
+  const WorkManagerBackgroundSyncScheduler();
+
+  @override
+  Future<void> scheduleUniqueSync() async {
+    await Workmanager().registerOneOffTask(
+      CloudBackupConstants.backgroundUniqueName,
+      CloudBackupConstants.backgroundTaskName,
+      existingWorkPolicy: ExistingWorkPolicy.replace,
+      constraints: Constraints(networkType: NetworkType.connected),
+      backoffPolicy: BackoffPolicy.exponential,
+      initialDelay: const Duration(seconds: 10),
+    );
+  }
+
+  @override
+  Future<void> cancel() async {
+    await Workmanager()
+        .cancelByUniqueName(CloudBackupConstants.backgroundUniqueName);
+  }
+}

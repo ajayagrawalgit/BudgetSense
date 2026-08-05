@@ -1,0 +1,31 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "build/**"
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    invalid_annotation_target: ignore
+
+linter:
+  rules:
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    prefer_final_locals: true
+    always_declare_return_types: true
+    avoid_print: true
+    # NOTE: `require_trailing_commas` is intentionally NOT enabled. As of the
+    # Dart 3.7+ "tall" formatter (this repo builds on Dart 3.12), the formatter
+    # owns trailing-comma placement, and that lint is mutually incompatible with
+    # `dart format` (enabling it makes `dart format --set-exit-if-changed` and
+    # `flutter analyze` unsatisfiable at the same time). The Dart team deprecated
+    # the rule for this reason. Trailing commas are still applied automatically
+    # by the formatter, so formatting consistency is preserved.
+    unnecessary_await_in_return: true
+    use_key_in_widget_constructors: true
+    sort_child_properties_last: true

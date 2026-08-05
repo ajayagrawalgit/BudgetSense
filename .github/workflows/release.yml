@@ -1,0 +1,132 @@
+name: Release
+
+# Controlled release. Triggered ONLY by a version tag (e.g. v0.1.0) or a manual
+# dispatch, never automatically on every push. The full CI gate runs first;
+# only if it passes do we build, checksum, and publish.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (must match pubspec, e.g. 0.1.0)"
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Reuse the exact PR gate so a release can never ship code that would fail CI.
+  gate:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build, checksum, publish
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write # needed to create the GitHub Release
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.44.4
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate code (Drift/build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # Fail closed if the tag / dispatch version does not match pubspec.
+      - name: Verify version matches pubspec
+        id: ver
+        run: |
+          set -euo pipefail
+          pubspec="$(grep -E '^version:' pubspec.yaml | sed 's/version:[[:space:]]*//')"
+          name="${pubspec%+*}"; code="${pubspec#*+}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            want="${GITHUB_REF_NAME#v}"
+          else
+            want="${{ github.event.inputs.version }}"
+          fi
+          if [ "$want" != "$name" ]; then
+            echo "Release version '$want' does not match pubspec '$name'"; exit 1
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+
+      - name: Release preflight
+        run: bash scripts/release_preflight.sh "${{ steps.ver.outputs.name }}"
+
+      # Real signing only from CI secret storage. If the keystore secrets are
+      # absent the build stays UNSIGNED and is labelled as such - never
+      # debug-signed, never mislabelled production.
+      - name: Configure signing (if secrets present)
+        id: signing
+        run: |
+          set -euo pipefail
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+            cat > android/key.properties <<EOF
+          storeFile=upload-keystore.jks
+          storePassword=${ANDROID_KEYSTORE_PASSWORD}
+          keyAlias=${ANDROID_KEY_ALIAS}
+          keyPassword=${ANDROID_KEY_PASSWORD}
+          EOF
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No signing secrets; producing an UNSIGNED release APK."
+          fi
+
+      - name: Build release APK
+        run: |
+          set -euo pipefail
+          flutter build apk --release \
+            --build-name="${{ steps.ver.outputs.name }}" \
+            --build-number="${{ steps.ver.outputs.code }}"
+          mkdir -p release-artifacts
+          if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
+            cp build/app/outputs/flutter-apk/app-release.apk \
+              "release-artifacts/BudgetSense-${{ steps.ver.outputs.name }}-production.apk"
+          else
+            src="build/app/outputs/flutter-apk/app-release-unsigned.apk"
+            [ -f "$src" ] || src="build/app/outputs/flutter-apk/app-release.apk"
+            cp "$src" \
+              "release-artifacts/BudgetSense-${{ steps.ver.outputs.name }}-release-unsigned.apk"
+          fi
+
+      - name: Generate checksums
+        run: bash scripts/apk_checksum.sh
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.name }}
+          name: BudgetSense ${{ steps.ver.outputs.name }}
+          generate_release_notes: true
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/SHA256SUMS

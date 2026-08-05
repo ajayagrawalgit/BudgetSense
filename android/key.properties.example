@@ -1,0 +1,14 @@
+# Copy this file to android/key.properties and fill in your own values to
+# produce a signed release build. The real key.properties and the .jks keystore
+# are gitignored and must never be committed.
+#
+# To generate a keystore:
+#   keytool -genkey -v -keystore budgetsense-release.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias budgetsense
+#
+# storeFile is resolved relative to the android/app directory.
+
+storePassword=your-keystore-password
+keyPassword=your-key-password
+keyAlias=budgetsense
+storeFile=budgetsense-release.jks

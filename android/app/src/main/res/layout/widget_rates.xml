@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/widget_ink_soft"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:text="@string/widget_rates_title" />
+        <TextView
+            android:id="@+id/month_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/widget_ink_faint"
+            android:textSize="12sp"
+            android:text="This month" />
+    </LinearLayout>
+
+    <!-- Savings rate -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/widget_ink_soft"
+            android:textSize="13sp"
+            android:text="@string/widget_savings_rate" />
+        <TextView
+            android:id="@+id/savings_rate_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/widget_ink"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:text="@string/widget_placeholder" />
+    </LinearLayout>
+    <ProgressBar
+        android:id="@+id/savings_bar"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="9dp"
+        android:layout_marginTop="4dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_bar_positive" />
+
+    <!-- Invested rate -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="12dp">
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="@color/widget_ink_soft"
+            android:textSize="13sp"
+            android:text="@string/widget_invest_rate" />
+        <TextView
+            android:id="@+id/invest_rate_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/widget_ink"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:text="@string/widget_placeholder" />
+    </LinearLayout>
+    <ProgressBar
+        android:id="@+id/invest_bar"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="9dp"
+        android:layout_marginTop="4dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_bar_info" />
+</LinearLayout>
