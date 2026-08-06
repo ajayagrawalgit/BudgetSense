@@ -1,0 +1,186 @@
+/* ==========================================================================
+   BudgetSense docs theme
+   Warm, paper-inspired palette. Light is the default; dark is the toggle.
+   ========================================================================== */
+
+:root {
+  --bs-sage: #6e8b6a;
+  --bs-sage-deep: #52694f;
+  --bs-clay: #b07c5e;
+  --bs-clay-deep: #8f6146;
+  --bs-cream: #f5ead1;
+  --bs-paper: #fbf7ee;
+  --bs-ink: #262219;
+}
+
+/* ---- Light scheme (default) ------------------------------------------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: var(--bs-sage);
+  --md-primary-fg-color--light: #86a281;
+  --md-primary-fg-color--dark: var(--bs-sage-deep);
+  --md-accent-fg-color: var(--bs-clay);
+  --md-default-bg-color: var(--bs-paper);
+  --md-typeset-a-color: var(--bs-sage-deep);
+  --md-footer-bg-color: #2f2a20;
+  --md-footer-bg-color--dark: #241f17;
+}
+
+/* ---- Dark scheme (slate) ---------------------------------------------- */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #7fa07a;
+  --md-accent-fg-color: #cf9877;
+  --md-typeset-a-color: #9dbf98;
+  --md-default-bg-color: #17150f;
+  --md-default-fg-color--light: #d7d2c6;
+  --md-code-bg-color: #221f18;
+}
+
+/* Header keeps the warm ink tone in both modes for brand consistency. */
+.md-header,
+.md-tabs {
+  background-color: #2f2a20;
+}
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: #121009;
+}
+
+/* Nicer body rhythm */
+.md-typeset {
+  font-feature-settings: "kern", "liga", "calt";
+}
+.md-typeset h1,
+.md-typeset h2 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   Hero
+   ========================================================================== */
+.bs-hero {
+  margin: -1.2rem -0.8rem 0;
+  padding: 4.5rem 1.2rem 4rem;
+  text-align: center;
+  background:
+    radial-gradient(60% 120% at 50% -10%, rgba(110, 139, 106, 0.22), transparent 60%),
+    linear-gradient(180deg, var(--bs-cream) 0%, var(--bs-paper) 100%);
+  border-bottom: 1px solid rgba(38, 34, 25, 0.08);
+}
+[data-md-color-scheme="slate"] .bs-hero {
+  background:
+    radial-gradient(60% 120% at 50% -10%, rgba(127, 160, 122, 0.18), transparent 60%),
+    linear-gradient(180deg, #1d1a12 0%, #17150f 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bs-hero__content {
+  max-width: 46rem;
+  margin: 0 auto;
+}
+.bs-hero__logo {
+  width: 108px;
+  height: auto;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 6px 18px rgba(38, 34, 25, 0.18));
+}
+.bs-hero h1 {
+  font-size: 2.9rem;
+  line-height: 1.08;
+  margin: 0.2rem 0 0.6rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.bs-hero p {
+  font-size: 1.05rem;
+  color: var(--md-default-fg-color--light);
+  max-width: 34rem;
+  margin: 0 auto;
+}
+.bs-hero__actions {
+  margin: 1.8rem 0 0.8rem;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.bs-hero__actions .md-button {
+  border-radius: 999px;
+  padding: 0.55rem 1.5rem;
+  font-weight: 600;
+}
+.bs-hero__actions .md-button--primary {
+  box-shadow: 0 8px 22px rgba(110, 139, 106, 0.35);
+}
+.bs-hero__meta {
+  margin-top: 1rem !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0.02em;
+  color: var(--md-default-fg-color--light);
+  opacity: 0.85;
+}
+
+/* ==========================================================================
+   Sections + cards
+   ========================================================================== */
+.bs-section {
+  max-width: 58rem;
+  margin: 3.5rem auto 0;
+  padding: 0 0.4rem;
+}
+.bs-section > h2 {
+  text-align: center;
+  font-size: 1.8rem;
+  margin-bottom: 1.8rem;
+}
+
+.md-typeset .grid.cards > ul > li {
+  border-radius: 14px;
+  border: 1px solid rgba(38, 34, 25, 0.1);
+  padding: 1.1rem 1.2rem;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  background: var(--md-default-bg-color);
+}
+.md-typeset .grid.cards > ul > li:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 30px rgba(38, 34, 25, 0.12);
+  border-color: var(--bs-sage);
+}
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.md-typeset .grid.cards .lg.middle {
+  color: var(--bs-sage);
+}
+
+/* Call to action band */
+.bs-cta {
+  text-align: center;
+  margin: 4rem auto 3rem;
+  padding: 2.6rem 1.5rem;
+  border-radius: 18px;
+  background:
+    radial-gradient(80% 140% at 50% 0%, rgba(176, 124, 94, 0.16), transparent 60%),
+    var(--bs-cream);
+  border: 1px solid rgba(38, 34, 25, 0.08);
+}
+[data-md-color-scheme="slate"] .bs-cta {
+  background:
+    radial-gradient(80% 140% at 50% 0%, rgba(207, 152, 119, 0.14), transparent 60%),
+    #1d1a12;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+.bs-cta .md-button {
+  border-radius: 999px;
+  margin: 0.3rem;
+}
+
+/* Tighten the logo in the header a touch */
+.md-header__button.md-logo img {
+  height: 1.6rem;
+}
+
+@media screen and (max-width: 46rem) {
+  .bs-hero h1 { font-size: 2.1rem; }
+  .bs-hero { padding-top: 3rem; }
+}

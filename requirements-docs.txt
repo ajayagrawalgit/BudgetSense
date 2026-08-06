@@ -1,0 +1,6 @@
+# Documentation site dependencies (Material for MkDocs).
+# Used by .github/workflows/docs.yml to build and deploy the docs site.
+mkdocs-material==9.7.7
+mkdocs-include-markdown-plugin==7.3.0
+mkdocs-minify-plugin==0.8.0
+pymdown-extensions==11.0.1

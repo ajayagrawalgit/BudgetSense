@@ -61,5 +61,9 @@ dist/
 # Coverage
 coverage/
 
+# Docs site build output + docs virtualenv (MkDocs)
+site/
+.venv-docs/
+
 # Local signing config (never commit). See android/key.properties.example.
 android/app/*.keystore

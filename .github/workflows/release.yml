@@ -111,11 +111,14 @@ jobs:
           if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
             cp build/app/outputs/flutter-apk/app-release.apk \
               "release-artifacts/BudgetSense-${{ steps.ver.outputs.name }}-production.apk"
+            cp build/app/outputs/flutter-apk/app-release.apk \
+              "release-artifacts/BudgetSense.apk"
           else
             src="build/app/outputs/flutter-apk/app-release-unsigned.apk"
             [ -f "$src" ] || src="build/app/outputs/flutter-apk/app-release.apk"
             cp "$src" \
               "release-artifacts/BudgetSense-${{ steps.ver.outputs.name }}-release-unsigned.apk"
+            cp "$src" "release-artifacts/BudgetSense.apk"
           fi
 
       - name: Generate checksums

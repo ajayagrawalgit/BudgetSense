@@ -1,0 +1,140 @@
+site_name: BudgetSense
+site_description: >-
+  BudgetSense is a calm, private, offline-first money journal for your phone.
+  Documentation, guides, architecture, and security notes.
+site_author: Ajay Agrawal
+site_url: https://ajayagrawalgit.github.io/BudgetSense/
+
+repo_name: ajayagrawalgit/BudgetSense
+repo_url: https://github.com/ajayagrawalgit/BudgetSense
+edit_uri: edit/main/docs/
+
+copyright: >-
+  Copyright &copy; 2026 Ajay Agrawal. BudgetSense is free software under the
+  GNU GPL v3.0.
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: en
+  logo: budgetsense_logo.png
+  favicon: budgetsense_logo.png
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    # Light is the default. A single toggle flips to dark.
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.action.edit
+    - content.tooltips
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/ajayagrawalgit/BudgetSense
+      name: BudgetSense on GitHub
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/in/theajayagrawal
+      name: Ajay Agrawal on LinkedIn
+  generator: false
+
+plugins:
+  - search
+  - include-markdown
+  - minify:
+      minify_html: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Overview: getting-started/overview.md
+      - Install BudgetSense: getting-started/install.md
+      - Verify your download: getting-started/verify.md
+  - Product:
+      - Full specification: SPEC.md
+      - Design system: DESIGN.md
+      - Architecture: ARCHITECTURE.md
+  - Data and backup:
+      - Data recovery: DATA_RECOVERY.md
+      - Cloud sync architecture: backup/CLOUD_SYNC_ARCHITECTURE.md
+      - Backup and restore spec: backup/BACKUP_RESTORE_SPEC.md
+      - Snapshot schema: backup/SNAPSHOT_SCHEMA.md
+      - Backup state inventory: backup/BACKUP_STATE_INVENTORY.md
+      - Restore conflict policy: backup/RESTORE_CONFLICT_POLICY.md
+      - Google Drive setup: backup/GOOGLE_DRIVE_SETUP.md
+      - Implementation report: backup/IMPLEMENTATION_REPORT.md
+      - Manual test plan: backup/MANUAL_TEST_PLAN.md
+  - Security and privacy:
+      - Security: SECURITY.md
+      - Privacy policy: PRIVACY.md
+      - Terms of service: TERMS_OF_SERVICE.md
+  - Releases:
+      - Auto update: updates/AUTO_UPDATE.md
+      - Release checklist: RELEASE_CHECKLIST.md
+      - Changelog: changelog.md
+  - Community:
+      - Contributing: contributing.md
+      - Code of conduct: code-of-conduct.md
+      - License: license.md

@@ -68,4 +68,4 @@ mean green in CI.
 
 BudgetSense is licensed under the GNU General Public License v3.0. By
 contributing, you agree that your contributions are licensed under the same
-terms. Please also follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+terms. Please also follow our [Code of Conduct](https://github.com/ajayagrawalgit/BudgetSense/blob/main/CODE_OF_CONDUCT.md).
