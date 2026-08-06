@@ -20,7 +20,7 @@
 
 <p align="center">
   <!-- DOWNLOAD:START -->
-  <a href="../../releases/latest"><img src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Download%20for%20Android-free%20forever-6E8B6A?style=for-the-badge&logo=android&logoColor=white" alt="Download BudgetSense for Android, free" /></a>
+  <a href="https://github.com/ajayagrawalgit/BudgetSense/releases/latest/download/BudgetSense.apk"><img src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Download%20for%20Android-free%20forever-6E8B6A?style=for-the-badge&logo=android&logoColor=white" alt="Download BudgetSense for Android, free" /></a>
   <!-- DOWNLOAD:END -->
 </p>
 
@@ -41,16 +41,14 @@
 BudgetSense is a free Android app. It is not on the Play Store yet, so you
 install it directly from here. The whole thing, done on your phone:
 
-1. **Tap the green "Download for Android" button above.** It opens the download
-   page.
-2. **Tap the file that ends in `.apk`** (you will see it under a heading called
-   "Assets"). It downloads in a few seconds.
-3. **Open it** from the download notification, or from your Files app.
-4. Android may say *"For your security, your phone can't install unknown apps
+1. **Tap the green "Download for Android" button above.** The app file starts
+   downloading right away.
+2. **Open it** from the download notification, or from your Files app.
+3. Android may say *"For your security, your phone can't install unknown apps
    from this source."* That is normal for any app installed outside the Play
    Store. Tap **Settings**, switch on **Allow from this source**, tap **Back**,
    then tap **Install**.
-5. Open BudgetSense. That is it. There is nothing to sign up for.
+4. Open BudgetSense. That is it. There is nothing to sign up for.
 
 > **Is this safe?** Yes. Everything you enter stays on your own phone. No
 > account, no ads, no tracking, and the complete source code is right here in
