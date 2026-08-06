@@ -143,7 +143,7 @@ accept the revised Terms.
 ## 13. Contact
 
 The preferred way to reach the developer is to open an issue on the project's
-GitHub Issues page: `[GITHUB_REPO_URL]/issues`.
+GitHub Issues page: `https://github.com/ajayagrawalgit/BudgetSense/issues`.
 
 If you do not have a GitHub account or are unable to submit an issue, you may
-contact the developer by email at `[YOUR_CONTACT_EMAIL]`.
+contact the developer by email at `ajayagrawalofficial@gmail.com`.
