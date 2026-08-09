@@ -78,8 +78,7 @@ void main() {
       expect(result.updated.isArchived, isTrue);
     });
 
-    test('paidAt controls the recorded transaction date, not the due date',
-        () {
+    test('paidAt controls the recorded transaction date, not the due date', () {
       // Paid early: three days before the scheduled due date.
       final early = service.complete(
         _payment(due: DateTime(2026, 7, 15)),
@@ -101,9 +100,8 @@ void main() {
 
       // No paidAt given (e.g. the automatic catch-up path) still falls back
       // to the due date, exactly as before.
-      final fallback =
-          service.complete(_payment(due: DateTime(2026, 7, 15)),
-              newTransactionId: 't3');
+      final fallback = service.complete(_payment(due: DateTime(2026, 7, 15)),
+          newTransactionId: 't3');
       expect(fallback.transaction!.occurredAt, DateTime(2026, 7, 15));
     });
   });

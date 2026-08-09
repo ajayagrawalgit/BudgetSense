@@ -49,8 +49,8 @@ void main() {
     test('compact flag switches to abbreviated form', () {
       const m = Money(1234500); // 12,345.00 major
       final full = m.format(currencySymbol: r'$', locale: 'en_US');
-      final compact = m.format(
-          currencySymbol: r'$', locale: 'en_US', compact: true);
+      final compact =
+          m.format(currencySymbol: r'$', locale: 'en_US', compact: true);
       expect(full, contains('12,345'));
       // Compact drops the thousands grouping in favour of a K/thousand suffix.
       expect(compact, isNot(contains('12,345')));

@@ -189,8 +189,8 @@ class SettingsState {
       accent: accent ?? this.accent,
       fontChoice: fontChoice ?? this.fontChoice,
       investmentTreatment: investmentTreatment ?? this.investmentTreatment,
-      investmentTreatmentCustomLabel: investmentTreatmentCustomLabel ??
-          this.investmentTreatmentCustomLabel,
+      investmentTreatmentCustomLabel:
+          investmentTreatmentCustomLabel ?? this.investmentTreatmentCustomLabel,
       reduceMotion: reduceMotion ?? this.reduceMotion,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       appLockEnabled: appLockEnabled ?? this.appLockEnabled,

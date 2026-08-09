@@ -67,3 +67,4 @@ site/
 
 # Local signing config (never commit). See android/key.properties.example.
 android/app/*.keystore
+release-artifacts

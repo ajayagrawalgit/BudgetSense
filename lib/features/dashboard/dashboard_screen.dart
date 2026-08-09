@@ -647,7 +647,9 @@ class _PaymentsCard extends ConsumerWidget {
                   Expanded(child: Text(p.name, style: text.bodyMedium)),
                   Text(
                     p.amount.format(
-                        currencySymbol: symbol, locale: locale, compact: compact),
+                        currencySymbol: symbol,
+                        locale: locale,
+                        compact: compact),
                     style: text.titleSmall,
                   ),
                 ],

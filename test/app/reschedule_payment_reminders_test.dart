@@ -97,7 +97,8 @@ Future<WidgetRef> pumpRef(
   return capturedRef;
 }
 
-RecurringPaymentEntity _payment({String id = 'netflix', bool reminderEnabled = true}) {
+RecurringPaymentEntity _payment(
+    {String id = 'netflix', bool reminderEnabled = true}) {
   final now = DateTime.now();
   return RecurringPaymentEntity(
     id: id,
