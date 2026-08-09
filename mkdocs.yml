@@ -18,6 +18,7 @@ site_dir: site
 
 theme:
   name: material
+  custom_dir: overrides
   language: en
   logo: budgetsense_logo.png
   favicon: budgetsense_logo.png
@@ -58,6 +59,10 @@ theme:
 
 extra_css:
   - stylesheets/extra.css
+  - stylesheets/home.css
+
+extra_javascript:
+  - javascripts/home.js
 
 extra:
   social:
@@ -124,7 +129,6 @@ nav:
       - Backup state inventory: backup/BACKUP_STATE_INVENTORY.md
       - Restore conflict policy: backup/RESTORE_CONFLICT_POLICY.md
       - Google Drive setup: backup/GOOGLE_DRIVE_SETUP.md
-      - Implementation report: backup/IMPLEMENTATION_REPORT.md
       - Manual test plan: backup/MANUAL_TEST_PLAN.md
   - Security and privacy:
       - Security: SECURITY.md

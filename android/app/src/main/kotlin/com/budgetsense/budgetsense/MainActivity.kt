@@ -237,6 +237,20 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    /** Manufacturers whose vibration motors need a stronger nudge than our
+     *  default tuning to actually turn on (see [performHaptic]'s doc comment).
+     *  Reported specifically for Motorola; kept as a set so more can be added
+     *  if the same silent-haptics report comes in for another OEM. */
+    private val _weakMotorManufacturer: Boolean by lazy {
+        Build.MANUFACTURER.contains("motorola", ignoreCase = true)
+    }
+
+    private val _minAmplitudeFloor: Int
+        get() = if (_weakMotorManufacturer) 200 else 0
+
+    private val _durationFloorMs: Long
+        get() = if (_weakMotorManufacturer) 40L else 0L
+
     /** Fires a short, purposeful vibration mapped from the semantic kind sent by
      *  the Dart [Haptics] helper (selection / confirm / impact / warning).
      *
@@ -244,7 +258,16 @@ class MainActivity : FlutterFragmentActivity() {
      *  effects (EFFECT_TICK etc.), because predefined effects are silent no-ops
      *  on many OEM devices. A one-shot with an explicit amplitude physically
      *  drives the motor everywhere. Durations are kept short but above the
-     *  ~15ms perceptibility floor so they can actually be felt. */
+     *  ~15ms perceptibility floor so they can actually be felt.
+     *
+     *  Some OEMs (Motorola in particular, across several Moto G / Edge models)
+     *  ship ERM vibration motors with a much higher "won't even spin" floor
+     *  than the mid-range amplitudes we use elsewhere: our normal 100-160
+     *  amplitude at ~20-30ms is genuinely below their motor's turn-on
+     *  threshold, so nothing is felt even though the call succeeds with no
+     *  error. [_minAmplitudeFloor] and [_durationFloorMs] raise both amplitude
+     *  and duration on those manufacturers so the pulse actually clears the
+     *  motor's start-up threshold; every other OEM keeps the original tuning. */
     private fun performHaptic(kind: String) {
         try {
             val v = vibrator
@@ -253,23 +276,24 @@ class MainActivity : FlutterFragmentActivity() {
                 return
             }
 
-            val ms = when (kind) {
+            val ms = (when (kind) {
                 "selection" -> 20L
                 "confirm" -> 30L
                 "impact" -> 45L
                 "warning" -> 60L
                 else -> 20L
-            }
+            }).coerceAtLeast(_durationFloorMs)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val amplitude = if (v.hasAmplitudeControl()) {
-                    when (kind) {
+                    val tuned = when (kind) {
                         "selection" -> 100
                         "confirm" -> 160
                         "impact" -> 220
                         "warning" -> 255
                         else -> 100
                     }
+                    tuned.coerceAtLeast(_minAmplitudeFloor)
                 } else {
                     // Device can't vary strength: let the system pick a sane one.
                     VibrationEffect.DEFAULT_AMPLITUDE
@@ -277,7 +301,7 @@ class MainActivity : FlutterFragmentActivity() {
 
                 val effect = if (kind == "warning") {
                     // A crisp double tap for the rare warning cue.
-                    VibrationEffect.createWaveform(longArrayOf(0, 45, 55, 45), -1)
+                    VibrationEffect.createWaveform(longArrayOf(0, ms, 55, ms), -1)
                 } else {
                     VibrationEffect.createOneShot(ms, amplitude)
                 }

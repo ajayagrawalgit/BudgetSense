@@ -29,7 +29,10 @@ class InsightsScreen extends ConsumerWidget {
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
-    String money(Money v) => v.format(currencySymbol: symbol, locale: locale);
+    String money(Money v) => v.format(
+        currencySymbol: symbol,
+        locale: locale,
+        compact: settings?.numberFormatCompact ?? false);
 
     String categoryName(String id) {
       final match = categories.where((c) => c.id == id).firstOrNull;
@@ -263,7 +266,10 @@ class _TrendCard extends ConsumerWidget {
                     children: [
                       Text(p.monthKey, style: text.bodySmall),
                       Text(
-                        p.spent.format(currencySymbol: symbol, locale: locale),
+                        p.spent.format(
+                            currencySymbol: symbol,
+                            locale: locale,
+                            compact: settings?.numberFormatCompact ?? false),
                         style: text.labelMedium,
                       ),
                     ],
@@ -318,7 +324,10 @@ class _ProjectionCard extends ConsumerWidget {
         : range.inclusiveDays;
     final isEarly = isCurrentMonth && elapsedDays < 5;
 
-    String money(Money v) => v.format(currencySymbol: symbol, locale: locale);
+    String money(Money v) => v.format(
+        currencySymbol: symbol,
+        locale: locale,
+        compact: settings?.numberFormatCompact ?? false);
 
     return CalmCard(
       child: Column(

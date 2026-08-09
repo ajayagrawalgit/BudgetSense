@@ -77,6 +77,7 @@ const Map<String, SettingPolicy> kSettingPolicies = <String, SettingPolicy>{
   'accent': SettingPolicy.included,
   'fontChoice': SettingPolicy.included,
   'investmentTreatment': SettingPolicy.included,
+  'investmentTreatmentCustomLabel': SettingPolicy.included,
   'reduceMotion': SettingPolicy.included,
   'hapticsEnabled': SettingPolicy.included,
 

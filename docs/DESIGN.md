@@ -365,7 +365,9 @@ amplitude control, and to the deprecated `vibrate(ms)` on API 24 to 25) tagged
 with `USAGE_TOUCH` on API 33+. Predefined effects (`EFFECT_TICK` etc.) were
 deliberately avoided because they are silent no-ops on many OEM devices. Durations
 scale with weight (selection 20ms, confirm 30ms, impact 45ms, warning is a short
-double-tap waveform). Because these are direct `Vibrator` calls, they are not
+double-tap waveform), raised further on manufacturers known to ship
+higher-threshold motors (Motorola, reported silent even at our normal tuning).
+Because these are direct `Vibrator` calls, they are not
 gated by the system touch-feedback toggle, so they fire on any device with a
 motor. Every other platform, and any channel failure, falls back to
 `HapticFeedback` (which is excellent on iOS via the Taptic engine).
@@ -608,9 +610,11 @@ quick-add sheet). See SPEC.md for the data bridge and layout details.
   (sectioned), or **XML**. A one-line hint describes each format; the file is
   handed to the native share sheet.
 - **Restore from file** accepts any file and **auto-detects** the format. A
-  confirm dialog warns that same-id records are overwritten and current settings
-  are replaced. On success it reapplies the launcher icon and shows a calm result
-  line (records restored, settings applied). Foreign files (e.g. Paisa) are
+  preview shows what will change before you confirm: nothing is ever
+  overwritten or deleted, new records are added, id collisions are appended as
+  new records, and settings are merged (existing values win unless unset). On
+  success it reapplies the launcher icon and shows a calm result line (records
+  inserted/skipped/remapped, settings applied). Foreign files (e.g. Paisa) are
   refused with a gentle message pointing to Settings > Import.
 
 ### Onboarding (5 pages, skippable)

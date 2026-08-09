@@ -437,6 +437,11 @@ class _TransactionRow extends ConsumerWidget {
     final colors = context.colors;
     final amountColor = txn.isOutflow ? colors.negative : colors.positive;
     final prefix = txn.isOutflow ? '-' : '+';
+    final compact = ref
+            .watch(settingsControllerProvider)
+            .valueOrNull
+            ?.numberFormatCompact ??
+        false;
 
     // Resolve the row icon: the transaction's own icon wins, else its
     // category's icon, else a neutral fallback. Colour follows the category.
@@ -495,7 +500,7 @@ class _TransactionRow extends ConsumerWidget {
               ),
             ),
             Text(
-              '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale)}',
+              '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale, compact: compact)}',
               style: theme.titleSmall?.copyWith(color: amountColor),
             ),
             if (!selecting)

@@ -211,21 +211,10 @@ class NotificationSettingsScreen extends ConsumerWidget {
   Future<void> _rescheduleAll(BuildContext context, WidgetRef ref) async {
     Haptics.confirm();
     final service = ref.read(notificationServiceProvider);
-    final planner = ref.read(reminderPlannerProvider);
-    final now = DateTime.now();
-    final payments =
-        ref.read(recurringPaymentsStreamProvider).valueOrNull ?? const [];
-    final loans = ref.read(loansStreamProvider).valueOrNull ?? const [];
     final settings = ref.read(settingsControllerProvider).valueOrNull;
 
     await service.cancelAll();
-    final alerts = [
-      ...planner.planForPayments(payments, now: now),
-      ...planner.planForLoans(loans, now: now),
-    ];
-    for (final a in alerts) {
-      await service.schedule(a);
-    }
+    await reschedulePaymentReminders(ref);
     if (settings?.dailyRecordRemindersEnabled ?? true) {
       await service.scheduleExpenseReminders(
         schedule: settings?.reminderSchedule ?? const ReminderSchedule(),
@@ -235,10 +224,8 @@ class NotificationSettingsScreen extends ConsumerWidget {
     }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Scheduled ${alerts.length} payment reminders plus your nudges',
-        ),
+      const SnackBar(
+        content: Text('Payment reminders and nudges have been rescheduled'),
       ),
     );
   }

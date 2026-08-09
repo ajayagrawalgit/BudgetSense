@@ -77,6 +77,35 @@ void main() {
       final result = service.complete(p, newTransactionId: 't1');
       expect(result.updated.isArchived, isTrue);
     });
+
+    test('paidAt controls the recorded transaction date, not the due date',
+        () {
+      // Paid early: three days before the scheduled due date.
+      final early = service.complete(
+        _payment(due: DateTime(2026, 7, 15)),
+        newTransactionId: 't1',
+        paidAt: DateTime(2026, 7, 12),
+      );
+      expect(early.transaction!.occurredAt, DateTime(2026, 7, 12));
+      // The schedule still advances from its own due date, not from paidAt.
+      expect(early.updated.nextDueDate, DateTime(2026, 8, 15));
+
+      // Paid late: cleared ten days after an overdue due date.
+      final late = service.complete(
+        _payment(due: DateTime(2026, 7, 15)),
+        newTransactionId: 't2',
+        paidAt: DateTime(2026, 7, 25),
+      );
+      expect(late.transaction!.occurredAt, DateTime(2026, 7, 25));
+      expect(late.updated.nextDueDate, DateTime(2026, 8, 15));
+
+      // No paidAt given (e.g. the automatic catch-up path) still falls back
+      // to the due date, exactly as before.
+      final fallback =
+          service.complete(_payment(due: DateTime(2026, 7, 15)),
+              newTransactionId: 't3');
+      expect(fallback.transaction!.occurredAt, DateTime(2026, 7, 15));
+    });
   });
 
   group('RecurrenceService.payLoan', () {

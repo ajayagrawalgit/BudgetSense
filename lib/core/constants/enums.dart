@@ -182,7 +182,25 @@ extension ThresholdStatusX on ThresholdStatus {
 }
 
 /// How investments should be treated in the monthly balance formula.
-enum InvestmentTreatment { spending, savings, separate }
+///
+/// [custom] behaves financially exactly like [separate] (investments are
+/// tracked apart from spend/savings, balance is reported before investment
+/// allocation) but lets the user give that bucket their own name via
+/// [SettingsState.investmentTreatmentCustomLabel], e.g. "Retirement" or
+/// "Wealth building", instead of the generic word "Investments".
+enum InvestmentTreatment { spending, savings, separate, custom }
+
+extension InvestmentTreatmentLabel on InvestmentTreatment {
+  /// The generic display label. For [InvestmentTreatment.custom], prefer
+  /// [SettingsState]'s dynamic label (which falls back to this when the user
+  /// hasn't typed one yet).
+  String get label => switch (this) {
+        InvestmentTreatment.spending => 'Spending',
+        InvestmentTreatment.savings => 'Savings',
+        InvestmentTreatment.separate => 'Separate',
+        InvestmentTreatment.custom => 'Custom',
+      };
+}
 
 /// How often the "record your expenses" reminder repeats. Distinct from
 /// [Frequency] (which is for financial commitments) so the two never get

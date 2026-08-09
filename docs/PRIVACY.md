@@ -171,10 +171,10 @@ documentation for how Google handles data in your region.
 ## 13. How to contact us
 
 The preferred way to raise a privacy question or request is to open an issue on
-the project's GitHub Issues page: `https://github.com/ajayagrawalgit/BudgetSense/issues`.
+the project's GitHub Issues page: [github.com/ajayagrawalgit/BudgetSense/issues](https://github.com/ajayagrawalgit/BudgetSense/issues).
 
 If you do not have a GitHub account or are unable to submit an issue, you may
-contact the developer by email at `ajayagrawalofficial@gmail.com`.
+contact the developer by email at [ajayagrawalofficial@gmail.com](mailto:ajayagrawalofficial@gmail.com).
 
 Please do not include sensitive financial figures or your recovery passphrase in
 any message. We will never ask for your passphrase.

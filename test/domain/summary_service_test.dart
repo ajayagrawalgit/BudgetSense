@@ -80,6 +80,21 @@ void main() {
       expect(s.totalSavings.minorUnits, 70000);
     });
 
+    test(
+        'investment treatment "custom" behaves exactly like "separate" '
+        'financially (only its display label differs)', () {
+      final txns = [
+        _txn(TransactionType.income, 100000),
+        _txn(TransactionType.investment, 30000),
+      ];
+      final s = service.summarize(
+        txns,
+        investmentTreatment: InvestmentTreatment.custom,
+      );
+      expect(s.totalBalance.minorUnits, 100000);
+      expect(s.totalSavings.minorUnits, 70000);
+    });
+
     test('investment treatment "savings" subtracts investments from balance',
         () {
       final txns = [

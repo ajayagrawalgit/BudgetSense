@@ -85,10 +85,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final focused = ref.watch(focusedMonthProvider);
     final symbol = settings?.currencySymbol ?? '₹';
     final locale = settings?.localeCode;
+    final compact = settings?.numberFormatCompact ?? false;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
-    String money(Money v) => v.format(currencySymbol: symbol, locale: locale);
+    String money(Money v) =>
+        v.format(currencySymbol: symbol, locale: locale, compact: compact);
 
     final txns = txnsAsync.valueOrNull ?? const [];
 
@@ -141,6 +143,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               transactions: txnsAsync.valueOrNull ?? const [],
                               currencySymbol: symbol,
                               locale: locale,
+                              compact: compact,
                             )
                           : const SizedBox(width: double.infinity),
                     ),
@@ -565,6 +568,7 @@ class _PaymentsCard extends ConsumerWidget {
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
     final symbol = settings?.currencySymbol ?? '₹';
     final locale = settings?.localeCode;
+    final compact = settings?.numberFormatCompact ?? false;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -642,7 +646,8 @@ class _PaymentsCard extends ConsumerWidget {
                   const SizedBox(width: Insets.sm),
                   Expanded(child: Text(p.name, style: text.bodyMedium)),
                   Text(
-                    p.amount.format(currencySymbol: symbol, locale: locale),
+                    p.amount.format(
+                        currencySymbol: symbol, locale: locale, compact: compact),
                     style: text.titleSmall,
                   ),
                 ],

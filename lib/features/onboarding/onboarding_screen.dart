@@ -89,6 +89,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         await DefaultDataSeeder(ref.read(databaseProvider)).seedIfEmpty();
       }
 
+      // Ask for notification permission once, right here at the end of first
+      // run, same spot most apps do it. The other Android permissions this
+      // app declares (storage, install-packages) are special/contextual ones
+      // Android expects to be requested only when the matching feature
+      // (local backup, in-app update) is actually used, not upfront.
+      try {
+        final granted =
+            await ref.read(notificationServiceProvider).ensurePermission();
+        if (granted) {
+          await settings.save((c) => c.copyWith(notificationsEnabled: true));
+        }
+      } catch (_) {
+        // Never let a permission prompt block getting into the app.
+      }
+
       await settings.save((c) => c.copyWith(onboardingComplete: true));
       if (!mounted) return;
       context.go('/dashboard');

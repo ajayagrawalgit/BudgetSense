@@ -3,7 +3,7 @@
 **App:** BudgetSense
 **Publisher:** Ajay Agrawal (an individual developer)
 **Effective date:** 5 August 2026
-**Last updated:** 5 August 2026
+**Last updated:** 8 August 2026
 
 Please read these Terms of Service ("Terms") carefully before using BudgetSense
 ("the app"). By downloading, installing, or using the app, you agree to these
@@ -34,17 +34,22 @@ relationship with you.
 
 ## 3. License to use the app
 
-BudgetSense is proprietary software. Copyright (c) 2026 Ajay Agrawal. All rights
-reserved. Subject to these Terms, you are granted a personal, limited,
-non-exclusive, non-transferable, revocable license to install and use the app on
-devices you own or control for your own personal, non-commercial use.
+BudgetSense is free and open-source software, licensed under the
+[GNU General Public License v3.0](https://github.com/ajayagrawalgit/BudgetSense/blob/main/LICENSE)
+("GPLv3"). Copyright (c) 2026 Ajay Agrawal.
 
-You may not, except to the extent applicable law expressly permits: copy,
-redistribute, sell, sublicense, rent, or lease the app; modify, adapt, translate,
-or create derivative works of it; reverse engineer, decompile, or disassemble it;
-or remove or alter any proprietary notices. An open-source license may be offered
-by the developer in a future release; until then, no redistribution or
-modification rights are granted.
+That means you are free to run, study, modify, and redistribute BudgetSense,
+including commercially, as long as you comply with the GPLv3, most notably by
+keeping any distributed version (modified or not) under the same license and
+making its corresponding source code available to whoever you give it to. The
+full terms, including the disclaimer of warranty and limitation of liability
+that GPLv3 itself requires, are in that license text, and it governs whenever
+these Terms and the GPLv3 might otherwise conflict.
+
+The BudgetSense name and its logo mark are not covered by the GPLv3 code
+license. If you build and distribute a modified version, please rename it or
+make clear it is unofficial, so people do not mistake your build for the
+original project.
 
 ## 4. Your responsibilities
 
@@ -110,9 +115,11 @@ limited under applicable law.
 ## 9. Termination
 
 These Terms apply while you use the app. You may stop using the app and
-uninstall it at any time. The license in Section 3 ends automatically if you
-breach these Terms. Sections that by their nature should survive termination
-(for example Sections 2, 7, 8, 10, and 11) will survive.
+uninstall it at any time. Your rights to the BudgetSense code itself come from
+the GPLv3 (Section 3), which has its own termination and reinstatement rules;
+these Terms do not add extra conditions on top of it. Sections that by their
+nature should survive (for example Sections 2, 7, 8, 10, and 11) will survive
+you no longer using the app.
 
 ## 10. Governing law
 
@@ -143,7 +150,7 @@ accept the revised Terms.
 ## 13. Contact
 
 The preferred way to reach the developer is to open an issue on the project's
-GitHub Issues page: `https://github.com/ajayagrawalgit/BudgetSense/issues`.
+GitHub Issues page: [github.com/ajayagrawalgit/BudgetSense/issues](https://github.com/ajayagrawalgit/BudgetSense/issues).
 
 If you do not have a GitHub account or are unable to submit an issue, you may
-contact the developer by email at `ajayagrawalofficial@gmail.com`.
+contact the developer by email at [ajayagrawalofficial@gmail.com](mailto:ajayagrawalofficial@gmail.com).

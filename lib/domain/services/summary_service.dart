@@ -35,7 +35,10 @@ class MonthlySummary {
         // has left the available balance either way.
         return totalGains - totalSpent - totalInvestments;
       case InvestmentTreatment.separate:
-        // Report balance before investment allocation.
+      case InvestmentTreatment.custom:
+        // Report balance before investment allocation. A custom-labeled
+        // bucket is still tracked separately, financially identical to
+        // "separate", the user has just renamed it.
         return totalGains - totalSpent;
     }
   }

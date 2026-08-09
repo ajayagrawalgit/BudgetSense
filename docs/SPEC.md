@@ -440,10 +440,13 @@ when the motor lacks amplitude control; deprecated `vibrate(ms)` on API 24 to 25
 tagged `USAGE_TOUCH` on API 33+. Predefined effects (`EFFECT_TICK` etc.) are
 avoided because they are silent no-ops on many OEM devices; direct `Vibrator`
 calls also bypass the system touch-feedback toggle, so they fire on any device
-with a motor. Flutter's built-in `HapticFeedback` is the fallback for other
-platforms and any channel failure (ideal on iOS). Requires the `VIBRATE`
-permission. Note: the Android emulator reports a vibrator but has no physical
-motor, so haptics can only be felt on real hardware.
+with a motor. Some OEMs (Motorola in particular) ship motors with a much
+higher "won't even spin" amplitude/duration floor than our normal tuning, so
+`performHaptic` raises both for those manufacturers specifically, while every
+other OEM keeps the original tuning. Flutter's built-in `HapticFeedback` is the
+fallback for other platforms and any channel failure (ideal on iOS). Requires
+the `VIBRATE` permission. Note: the Android emulator reports a vibrator but
+has no physical motor, so haptics can only be felt on real hardware.
 
 ---
 
@@ -576,7 +579,8 @@ SharedPreferences under key `budgetsense.settings.v1`. Fields with defaults:
 | themeVariant | AppThemeVariant | system |
 | accent | AccentPreset | clay |
 | fontChoice | FontChoice | system |
-| investmentTreatment | InvestmentTreatment | separate |
+| investmentTreatment | InvestmentTreatment (spending/savings/separate/custom) | separate |
+| investmentTreatmentCustomLabel | String | '' (used only when investmentTreatment is custom) |
 | reduceMotion | bool | false |
 | hapticsEnabled | bool | true |
 | appLockEnabled | bool | false |

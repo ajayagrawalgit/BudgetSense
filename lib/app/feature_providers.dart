@@ -286,3 +286,51 @@ Future<int> catchUpRecurringPayments(WidgetRef ref) async {
   if (posted > 0) refreshAllDataProviders(ref);
   return posted;
 }
+
+/// Ids we scheduled on the previous pass, so the next pass can cancel any that
+/// no longer apply (payment deleted, archived, or its reminder turned off).
+/// Session-scoped: a cold start recomputes everything from scratch anyway.
+Set<int> _lastScheduledReminderIds = {};
+
+/// Re-lays payment/loan due reminders from the current data. [ReminderPlanner]
+/// gives each alert a stable id per payment/loan, so calling this again after
+/// an edit simply overwrites the old alarm with the new due date.
+///
+/// This used to be reachable only via the "Reschedule all notifications"
+/// button buried in Settings, so a newly added or edited payment silently
+/// never got a reminder unless the user found that button. Call this instead
+/// on cold start (after catch-up, since that can shift due dates) and
+/// reactively whenever payments or loans change.
+Future<void> reschedulePaymentReminders(WidgetRef ref) async {
+  final settings = ref.read(settingsControllerProvider).valueOrNull;
+  final service = ref.read(notificationServiceProvider);
+  if (settings == null || !settings.notificationsEnabled) {
+    if (_lastScheduledReminderIds.isNotEmpty) {
+      for (final id in _lastScheduledReminderIds) {
+        await service.cancel(id);
+      }
+      _lastScheduledReminderIds = {};
+    }
+    return;
+  }
+
+  final planner = ref.read(reminderPlannerProvider);
+  final payments =
+      ref.read(recurringPaymentsStreamProvider).valueOrNull ?? const [];
+  final loans = ref.read(loansStreamProvider).valueOrNull ?? const [];
+  final now = DateTime.now();
+
+  final alerts = [
+    ...planner.planForPayments(payments, now: now),
+    ...planner.planForLoans(loans, now: now),
+  ];
+  final newIds = alerts.map((a) => a.id).toSet();
+
+  for (final staleId in _lastScheduledReminderIds.difference(newIds)) {
+    await service.cancel(staleId);
+  }
+  for (final alert in alerts) {
+    await service.schedule(alert);
+  }
+  _lastScheduledReminderIds = newIds;
+}

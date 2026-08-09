@@ -23,6 +23,7 @@ class SettingsState {
     this.accent = AccentPreset.clay,
     this.fontChoice = FontChoice.system,
     this.investmentTreatment = InvestmentTreatment.separate,
+    this.investmentTreatmentCustomLabel = '',
     this.reduceMotion = false,
     this.hapticsEnabled = true,
     this.appLockEnabled = false,
@@ -70,6 +71,22 @@ class SettingsState {
   final AccentPreset accent;
   final FontChoice fontChoice;
   final InvestmentTreatment investmentTreatment;
+
+  /// User-typed label shown when [investmentTreatment] is
+  /// [InvestmentTreatment.custom], e.g. "Retirement" or "Wealth building".
+  /// Ignored for every other treatment. Empty by default.
+  final String investmentTreatmentCustomLabel;
+
+  /// The label to actually show in the UI: the custom text when the user has
+  /// set [InvestmentTreatment.custom] and typed something, otherwise the
+  /// treatment's generic [InvestmentTreatmentLabel.label]. Every screen that
+  /// displays how investments are treated should read this, not the raw enum,
+  /// so a custom name shows up everywhere consistently.
+  String get investmentTreatmentLabel =>
+      investmentTreatment == InvestmentTreatment.custom &&
+              investmentTreatmentCustomLabel.trim().isNotEmpty
+          ? investmentTreatmentCustomLabel.trim()
+          : investmentTreatment.label;
 
   // Accessibility & security.
   final bool reduceMotion;
@@ -137,6 +154,7 @@ class SettingsState {
     AccentPreset? accent,
     FontChoice? fontChoice,
     InvestmentTreatment? investmentTreatment,
+    String? investmentTreatmentCustomLabel,
     bool? reduceMotion,
     bool? hapticsEnabled,
     bool? appLockEnabled,
@@ -171,6 +189,8 @@ class SettingsState {
       accent: accent ?? this.accent,
       fontChoice: fontChoice ?? this.fontChoice,
       investmentTreatment: investmentTreatment ?? this.investmentTreatment,
+      investmentTreatmentCustomLabel: investmentTreatmentCustomLabel ??
+          this.investmentTreatmentCustomLabel,
       reduceMotion: reduceMotion ?? this.reduceMotion,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       appLockEnabled: appLockEnabled ?? this.appLockEnabled,
@@ -210,6 +230,7 @@ class SettingsState {
         'accent': accent.name,
         'fontChoice': fontChoice.name,
         'investmentTreatment': investmentTreatment.name,
+        'investmentTreatmentCustomLabel': investmentTreatmentCustomLabel,
         'reduceMotion': reduceMotion,
         'hapticsEnabled': hapticsEnabled,
         'appLockEnabled': appLockEnabled,
@@ -270,6 +291,8 @@ class SettingsState {
         m['investmentTreatment'],
         InvestmentTreatment.separate,
       ),
+      investmentTreatmentCustomLabel:
+          m['investmentTreatmentCustomLabel'] as String? ?? '',
       reduceMotion: m['reduceMotion'] as bool? ?? false,
       hapticsEnabled: m['hapticsEnabled'] as bool? ?? true,
       appLockEnabled: m['appLockEnabled'] as bool? ?? false,

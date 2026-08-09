@@ -361,9 +361,14 @@ class _RecurringRow extends ConsumerWidget {
 
   Future<void> _markComplete(BuildContext context, WidgetRef ref) async {
     final service = ref.read(recurrenceServiceProvider);
+    // Record the payment/investment against the day the user actually marks it
+    // paid, not its scheduled due date. This is correct whether they pay early
+    // or clear an overdue one. The schedule's next due date still advances on
+    // its planned cadence (handled inside complete()).
     final result = service.complete(
       payment,
       newTransactionId: DefaultDataSeeder.newId(),
+      paidAt: DateTime.now(),
     );
     if (result.transaction != null) {
       await ref.read(transactionRepositoryProvider).upsert(result.transaction!);

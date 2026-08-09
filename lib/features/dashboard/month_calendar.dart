@@ -16,6 +16,7 @@ class MonthCalendar extends StatefulWidget {
     required this.transactions,
     required this.currencySymbol,
     this.locale,
+    this.compact = false,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class MonthCalendar extends StatefulWidget {
   final List<TransactionEntity> transactions;
   final String currencySymbol;
   final String? locale;
+  final bool compact;
 
   @override
   State<MonthCalendar> createState() => _MonthCalendarState();
@@ -155,6 +157,7 @@ class _MonthCalendarState extends State<MonthCalendar> {
               info: byDay[_selectedDay],
               currencySymbol: widget.currencySymbol,
               locale: widget.locale,
+              compact: widget.compact,
             ),
           ],
         ],
@@ -233,12 +236,14 @@ class _DaySummary extends StatelessWidget {
     required this.info,
     required this.currencySymbol,
     required this.locale,
+    this.compact = false,
   });
 
   final String label;
   final ({int count, int net})? info;
   final String currencySymbol;
   final String? locale;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +274,7 @@ class _DaySummary extends StatelessWidget {
         const Spacer(),
         Text(
           '${positive ? '+' : '-'}'
-          '${net.format(currencySymbol: currencySymbol, locale: locale)}',
+          '${net.format(currencySymbol: currencySymbol, locale: locale, compact: compact)}',
           style: text.titleSmall?.copyWith(
             color: positive ? colors.positive : colors.negative,
           ),

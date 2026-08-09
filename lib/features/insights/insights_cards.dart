@@ -19,6 +19,7 @@ String _fmt(WidgetRef ref, Money v) {
   return v.format(
     currencySymbol: s?.currencySymbol ?? '₹',
     locale: s?.localeCode,
+    compact: s?.numberFormatCompact ?? false,
   );
 }
 

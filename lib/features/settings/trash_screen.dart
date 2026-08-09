@@ -67,6 +67,7 @@ class TrashScreen extends ConsumerWidget {
                   txn: t,
                   symbol: symbol,
                   locale: locale,
+                  compact: settings?.numberFormatCompact ?? false,
                   onRestore: () => _restore(context, ref, t),
                   onDeleteForever: () => _deleteForever(context, ref, t),
                 );
@@ -177,6 +178,7 @@ class _TrashRow extends StatelessWidget {
     required this.txn,
     required this.symbol,
     required this.locale,
+    this.compact = false,
     required this.onRestore,
     required this.onDeleteForever,
   });
@@ -184,6 +186,7 @@ class _TrashRow extends StatelessWidget {
   final TransactionEntity txn;
   final String symbol;
   final String? locale;
+  final bool compact;
   final VoidCallback onRestore;
   final VoidCallback onDeleteForever;
 
@@ -231,7 +234,7 @@ class _TrashRow extends StatelessWidget {
             ),
           ),
           Text(
-            '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale)}',
+            '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale, compact: compact)}',
             style: text.titleSmall?.copyWith(color: amountColor),
           ),
           IconButton(

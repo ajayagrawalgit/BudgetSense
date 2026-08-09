@@ -23,7 +23,7 @@ client SECRET is never embedded in the app.
 ## 3. Android OAuth clients
 
 You need the SHA-1 of each signing certificate registered against an Android
-OAuth client (same package name `com.example.budgetsense` — confirm the actual
+OAuth client (package name `com.budgetsense.budgetsense`, matching the
 `applicationId` in `android/app/build.gradle.kts`).
 
 Get fingerprints:

@@ -519,10 +519,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         children: [
                           for (final t in InvestmentTreatment.values)
                             ChoiceChip(
-                              label: Text(t.name),
+                              label: Text(
+                                t == InvestmentTreatment.custom
+                                    ? s.investmentTreatmentLabel
+                                    : t.label,
+                              ),
                               selected: s.investmentTreatment == t,
-                              onSelected: (_) => controller.save(
-                                (c) => c.copyWith(investmentTreatment: t),
+                              onSelected: (_) async {
+                                await controller.save(
+                                  (c) => c.copyWith(investmentTreatment: t),
+                                );
+                                if (t == InvestmentTreatment.custom) {
+                                  await _editInvestmentCustomLabel(
+                                    s.investmentTreatmentCustomLabel,
+                                  );
+                                }
+                              },
+                            ),
+                          if (s.investmentTreatment ==
+                              InvestmentTreatment.custom)
+                            ActionChip(
+                              avatar: const Icon(Icons.edit, size: 16),
+                              label: const Text('Rename'),
+                              onPressed: () => _editInvestmentCustomLabel(
+                                s.investmentTreatmentCustomLabel,
                               ),
                             ),
                         ],
@@ -807,6 +827,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Couldn't bring it back, sorry.")),
       );
+    }
+  }
+
+  Future<void> _editInvestmentCustomLabel(String current) async {
+    final ctrl = TextEditingController(text: current);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Custom investment label'),
+        content: TextField(
+          controller: ctrl,
+          maxLength: 24,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'e.g. Retirement'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      await ref.read(settingsControllerProvider.notifier).save(
+            (c) => c.copyWith(investmentTreatmentCustomLabel: result),
+          );
     }
   }
 

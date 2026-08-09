@@ -74,7 +74,18 @@ class Money implements Comparable<Money> {
   double percentOf(Money other) => ratioOf(other) * 100;
 
   /// Format for display with the configured [currencySymbol] and [locale].
-  String format({String currencySymbol = '₹', String? locale}) {
+  ///
+  /// When [compact] is true, delegates to [formatCompact] so tight UI spaces
+  /// show "12.3K" style numbers. Exports and imports must always keep the
+  /// default `compact: false` to preserve full precision.
+  String format({
+    String currencySymbol = '₹',
+    String? locale,
+    bool compact = false,
+  }) {
+    if (compact) {
+      return formatCompact(currencySymbol: currencySymbol, locale: locale);
+    }
     final format = NumberFormat.currency(
       locale: locale,
       symbol: currencySymbol,

@@ -134,6 +134,17 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     final settingsAsync = ref.watch(settingsControllerProvider);
     final settings = settingsAsync.valueOrNull;
 
+    // Payment/loan due reminders used to be scheduled only if the user found
+    // the "Reschedule all notifications" button in Settings. Watching these
+    // streams here means any add, edit, delete, or mark-paid automatically
+    // re-lays the reminders with the fresh due dates, no manual step needed.
+    ref.listen(recurringPaymentsStreamProvider, (_, __) {
+      unawaited(reschedulePaymentReminders(ref));
+    });
+    ref.listen(loansStreamProvider, (_, __) {
+      unawaited(reschedulePaymentReminders(ref));
+    });
+
     // Keep the global haptics gate in sync with the user's preference. Done in
     // build so it tracks every settings change, including a restore/import.
     if (settings != null) {
@@ -188,6 +199,7 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           await catchUpRecurringPayments(ref);
+          await reschedulePaymentReminders(ref);
         } catch (_) {
           // Never let auto-roll crash startup.
         }
