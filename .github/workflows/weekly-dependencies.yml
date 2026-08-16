@@ -86,7 +86,7 @@ jobs:
       # ---------------------------------------------------------------
       - name: Scan for known vulnerabilities (advisory)
         continue-on-error: true
-        uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.0
         with:
           scan-args: |-
             --lockfile=pubspec.lock
@@ -182,7 +182,7 @@ jobs:
       - name: Rescan after update (advisory)
         if: steps.diff.outputs.changed == 'true'
         continue-on-error: true
-        uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.0
         with:
           scan-args: |-
             --lockfile=pubspec.lock
