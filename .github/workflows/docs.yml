@@ -40,6 +40,9 @@ jobs:
         with:
           fetch-depth: 0 # full history so edit/last-updated info is accurate
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
