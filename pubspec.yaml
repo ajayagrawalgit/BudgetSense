@@ -58,7 +58,7 @@ dependencies:
   # Opening external links (author credits, source repo)
   url_launcher: ^6.3.0
   cryptography: ^2.7.0
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^10.3.1
   http: ^1.2.0
   google_sign_in: ^7.0.0
   googleapis: ^13.2.0
