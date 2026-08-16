@@ -46,7 +46,7 @@ dependencies:
   xml: ^6.6.0
 
   # Security (biometric / pin lock scaffolding)
-  local_auth: ^2.2.0
+  local_auth: ^3.0.2
 
   # File picking (backup restore)
   file_picker: ^8.0.5
