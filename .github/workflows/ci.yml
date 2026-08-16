@@ -67,6 +67,9 @@ jobs:
       - name: Placeholder / debug-config scan
         run: bash scripts/check_placeholders.sh
 
+      - name: Security regression gate
+        run: bash scripts/security_gate.sh
+
       - name: Run tests with coverage (serial, deterministic)
         run: flutter test --coverage --concurrency=1 --reporter expanded
 

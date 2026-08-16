@@ -17,14 +17,6 @@ name: Auto release on merge
 on:
   push:
     branches: [main]
-    paths:
-      - "lib/**"
-      - "android/**"
-      - "ios/**"
-      - "assets/**"
-      - "pubspec.yaml"
-      - "pubspec.lock"
-      - ".github/workflows/auto-release.yml"
   workflow_dispatch:
 
 # Serialised, and deliberately NOT cancel-in-progress. Cancelling half way
@@ -121,33 +113,42 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         run: bash scripts/release_preflight.sh "${{ steps.ver.outputs.name }}"
 
+      - name: Assert signing secrets are configured
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          missing=0
+          for key in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!key:-}" ]; then
+              echo "::error::Missing required secret: $key"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Signing secrets are incomplete. Add all four in repo secrets."
+            exit 1
+          fi
+
       # Real signing only from CI secret storage, written outside the checkout.
-      # With no secrets the build stays UNSIGNED and is labelled as such. It is
-      # never debug-signed, because a debug-signed APK looks installable while
-      # being trivially forgeable.
-      - name: Configure signing (if secrets present)
+      # Secrets are required for auto-release: fail closed if they are missing.
+      - name: Configure signing
         id: signing
         if: steps.guard.outputs.skip == 'false'
         run: |
           set -euo pipefail
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            secure_dir="${RUNNER_TEMP}/budgetsense-signing"
-            mkdir -p "$secure_dir"
-            chmod 700 "$secure_dir"
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$secure_dir/upload-keystore.jks"
-            cat > "$secure_dir/key.properties" <<EOF
+          secure_dir="${RUNNER_TEMP}/budgetsense-signing"
+          mkdir -p "$secure_dir"
+          chmod 700 "$secure_dir"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$secure_dir/upload-keystore.jks"
+          cat > "$secure_dir/key.properties" <<EOF
           storeFile=$secure_dir/upload-keystore.jks
           storePassword=${ANDROID_KEYSTORE_PASSWORD}
           keyAlias=${ANDROID_KEY_ALIAS}
           keyPassword=${ANDROID_KEY_PASSWORD}
           EOF
-            chmod 600 "$secure_dir/upload-keystore.jks" "$secure_dir/key.properties"
-            echo "BUDGETSENSE_KEYSTORE_PROPERTIES=$secure_dir/key.properties" >> "$GITHUB_ENV"
-            echo "signed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No signing secrets; producing an UNSIGNED release APK."
-          fi
+          chmod 600 "$secure_dir/upload-keystore.jks" "$secure_dir/key.properties"
+          echo "BUDGETSENSE_KEYSTORE_PROPERTIES=$secure_dir/key.properties" >> "$GITHUB_ENV"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
         if: steps.guard.outputs.skip == 'false'
@@ -157,17 +158,22 @@ jobs:
             --build-name="${{ steps.ver.outputs.name }}" \
             --build-number="${{ steps.ver.outputs.build }}"
           mkdir -p release-artifacts
-          if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
-            src="build/app/outputs/flutter-apk/app-release.apk"
-            out="BudgetSense-${{ steps.ver.outputs.name }}-production.apk"
-          else
-            src="build/app/outputs/flutter-apk/app-release-unsigned.apk"
-            [ -f "$src" ] || src="build/app/outputs/flutter-apk/app-release.apk"
-            out="BudgetSense-${{ steps.ver.outputs.name }}-release-unsigned.apk"
-          fi
+          src="build/app/outputs/flutter-apk/app-release.apk"
+          out="BudgetSense-${{ steps.ver.outputs.name }}-production.apk"
           cp "$src" "release-artifacts/$out"
           # Stable filename so the README download button never goes stale.
           cp "$src" "release-artifacts/BudgetSense.apk"
+
+      - name: Verify production APK signature
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner -perm -u+x | sort -V | tail -1)"
+          if [ -z "$apksigner" ]; then
+            echo "::error::Android apksigner was not found on the runner."
+            exit 1
+          fi
+          "$apksigner" verify --verbose --print-certs release-artifacts/BudgetSense.apk
 
       - name: Generate checksums
         if: steps.guard.outputs.skip == 'false'
@@ -183,7 +189,7 @@ jobs:
           python3 tool/release_notes.py \
             --version "${{ steps.ver.outputs.name }}" \
             --build "${{ steps.ver.outputs.build }}" \
-            --signed "${{ steps.signing.outputs.signed }}" \
+            --signed "true" \
             > /tmp/release-notes.md
           cat /tmp/release-notes.md
 

@@ -16,7 +16,7 @@ A quiet money journal for people who like keeping track, but hate noisy apps.
 
 <br />
 
-<a href="https://github.com/ajayagrawalgit/BudgetSense/releases/latest">
+<a href="https://github.com/ajayagrawalgit/BudgetSense/releases/latest/download/BudgetSense.apk">
   <img src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Download%20for%20Android-BudgetSense%200.1-B07C5E?style=for-the-badge&logo=android&logoColor=white" alt="Download BudgetSense 0.1 for Android" />
 </a>
 
@@ -75,7 +75,7 @@ If you already note down expenses, track your rent, SIPs, EMIs, subscriptions, o
 
 ## Install on Android
 
-1. Open [latest release](https://github.com/ajayagrawalgit/BudgetSense/releases/latest)
+1. Open [latest APK](https://github.com/ajayagrawalgit/BudgetSense/releases/latest/download/BudgetSense.apk)
 2. Download `BudgetSense.apk`
 3. Open it on your phone
 4. If Android asks, allow installs from this source
