@@ -5,6 +5,13 @@ from this repository. This document is the exact checklist. No secrets are ever
 committed: a public mobile OAuth client id is configured via platform files; a
 client SECRET is never embedded in the app.
 
+**Building a fork?** You need your own Google Cloud project. The client id
+compiled in by default belongs to the upstream project and is tied to upstream's
+signing certificate, so Drive sign-in will fail on a build you signed yourself
+until you register your own OAuth client and pass its id at build time (see
+section 5). Everything else in BudgetSense works without this: cloud backup is
+opt-in, and the app is fully usable with it switched off.
+
 ## 1. Google Cloud project
 
 1. Create (or reuse) a project at <https://console.cloud.google.com/>.
@@ -23,7 +30,7 @@ client SECRET is never embedded in the app.
 ## 3. Android OAuth clients
 
 You need the SHA-1 of each signing certificate registered against an Android
-OAuth client (same package name `com.example.budgetsense` — confirm the actual
+OAuth client (package name `com.budgetsense.budgetsense`, matching the
 `applicationId` in `android/app/build.gradle.kts`).
 
 Get fingerprints:
@@ -59,11 +66,14 @@ uploaded artifact.
 ## 5. Build-time configuration
 
 - The `applicationId` is `com.budgetsense.budgetsense`. Register the OAuth
-  Android client with THIS package name and your signing SHA-1.
-- The current release keystore's SHA-1 (from `budgetsense-upload.jks`) is:
-  `51:6C:87:60:5E:13:DB:38:C7:AF:B2:3D:33:3F:3E:1A:D6:13:2B:6E`
-  Register this exact fingerprint (colons optional in the console). If you ever
-  regenerate the keystore, register the new SHA-1 too.
+  Android client with THIS package name and your own signing SHA-1.
+- Read the fingerprint out of whichever keystore you sign with:
+  ```bash
+  keytool -list -v -keystore your-upload.jks -alias your-alias | grep SHA1
+  ```
+  Register that exact fingerprint (colons optional in the console), for the
+  debug key as well if you want sign-in to work while developing. Regenerating
+  a keystore means registering the new fingerprint too.
 - Create a **Web application** OAuth client as well and pass its id at build time
   so Drive scope authorization returns a usable access token on Android:
   ```bash

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12+ replaces the window-background splash with the system splash
+         screen. It composites the adaptive launcher icon (the ensō with its
+         terracotta dot) over this colour, so setting the field is all that is
+         needed to stay on brand. No animated icon is supplied deliberately: the
+         splash should be a single quiet moment, not a performance.
+
+         The colour matches the app's own light background so there is no flash
+         when Flutter draws its first frame. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

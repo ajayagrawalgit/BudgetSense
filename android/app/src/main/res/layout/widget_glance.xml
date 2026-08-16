@@ -25,14 +25,15 @@
             android:layout_height="wrap_content"
             android:textColor="@color/widget_ink_faint"
             android:textSize="12sp"
-            android:text="This month" />
+            android:text="@string/widget_this_month" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:baselineAligned="false">
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"

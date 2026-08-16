@@ -39,15 +39,18 @@ class AppDatabase extends _$AppDatabase {
   ///   v3 -> transactions.iconCodePoint (nullable) for per-expense icons
   ///   v4 -> import_ledger table (device-local restore provenance; enables the
   ///         non-destructive, idempotent, append-only restore engine)
+  ///   v5 -> loans.showInUpcoming (opt-in: surface a loan's EMI in the
+  ///         recurring due/Upcoming lists). Defaults false, so every existing
+  ///         loan keeps its current behaviour until the user opts in.
   ///
   /// At-rest encryption: the local SQLite file is currently NOT encrypted at
   /// the application layer (no SQLCipher). Confidentiality relies on the OS:
   /// the file lives in the app's private sandbox and, on modern Android/iOS,
   /// benefits from full-disk / file-based encryption tied to the device lock.
-  /// See docs/SECURITY.md for the full threat model and the SQLCipher upgrade
+  /// See SECURITY.md for the full threat model and the SQLCipher upgrade
   /// path. Do not claim this data is encrypted by the app.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -71,6 +74,11 @@ class AppDatabase extends _$AppDatabase {
             // Device-local restore provenance. New empty table; touches no
             // existing user data. Enables the non-destructive restore engine.
             await m.createTable(importLedger);
+          }
+          if (from < 5) {
+            // Opt-in EMI surfacing. Defaults to false, so every loan that
+            // already exists keeps showing only on the Loans tab.
+            await m.addColumn(loans, loans.showInUpcoming);
           }
         },
         beforeOpen: (details) async {

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- ic_notification.png is referenced by name from Dart, not from any Android
+         resource or class:
+
+             AndroidInitializationSettings('@drawable/ic_notification')
+             lib/core/services/notification_service.dart
+
+         Lint only scans Android sources, so it cannot see that reference and
+         reports the drawable as unused. Deleting it would leave every
+         notification without an icon, so the check is silenced for this one file
+         rather than for the project. -->
+    <issue id="UnusedResources">
+        <ignore path="src/main/res/drawable-mdpi/ic_notification.png" />
+        <ignore path="src/main/res/drawable-hdpi/ic_notification.png" />
+        <ignore path="src/main/res/drawable-xhdpi/ic_notification.png" />
+        <ignore path="src/main/res/drawable-xxhdpi/ic_notification.png" />
+        <ignore path="src/main/res/drawable-xxxhdpi/ic_notification.png" />
+    </issue>
+</lint>

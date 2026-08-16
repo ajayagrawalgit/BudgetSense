@@ -389,13 +389,6 @@ abstract final class IconSuggester {
     return null;
   }
 
-  /// Convenience: resolve straight to a const [IconData] (falls back to the
-  /// generic label icon when nothing matches), for previews.
-  static IconData suggestIcon(String text) {
-    final cp = suggestCodePoint(text);
-    return cp == null ? kFallbackCategoryIcon : categoryIcon(cp);
-  }
-
   /// Ordered, de-duplicated code points whose keywords match [query] as a
   /// substring (either direction). Powers the icon-picker search box. Returns
   /// an empty list when nothing matches, so callers can fall back to showing

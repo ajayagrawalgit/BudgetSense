@@ -12,6 +12,7 @@ import '../../core/utils/money.dart';
 import '../../core/validation/validators.dart';
 import '../../data/seed/default_data.dart';
 import '../../domain/entities/transaction_entity.dart';
+import '../common/app_feedback.dart';
 import '../settings/settings_controller.dart';
 
 /// A soothing, accent-coloured card on the dashboard for logging an expense in
@@ -73,9 +74,7 @@ class _QuickAddCardState extends ConsumerState<QuickAddCard> {
       _saving = false;
       _open = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Added. Onto the next thing.')),
-    );
+    context.showMessage('Added. Onto the next thing.');
   }
 
   @override
@@ -85,7 +84,7 @@ class _QuickAddCardState extends ConsumerState<QuickAddCard> {
     final categories =
         ref.watch(categoriesStreamProvider).valueOrNull ?? const [];
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final loc = settings?.localeCode;
 
     _categoryId ??= categories.isNotEmpty ? categories.first.id : null;

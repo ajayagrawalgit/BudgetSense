@@ -2,11 +2,17 @@ name: Deploy docs
 
 # Builds the Material for MkDocs site and publishes it to GitHub Pages.
 # Runs on pushes to main that touch docs, and can be triggered manually.
+#
+# The docs pages are thin `include-markdown` wrappers around the Markdown files
+# at the repository root, so editing README.md or CHANGELOG.md is enough to
+# refresh the site. The `*.md` and `overrides/**` paths below are what make
+# that automatic: no page content is ever duplicated by hand.
 on:
   push:
     branches: [main]
     paths:
       - "docs/**"
+      - "overrides/**"
       - "mkdocs.yml"
       - "requirements-docs.txt"
       - "*.md"

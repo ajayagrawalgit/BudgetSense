@@ -77,6 +77,7 @@ const Map<String, SettingPolicy> kSettingPolicies = <String, SettingPolicy>{
   'accent': SettingPolicy.included,
   'fontChoice': SettingPolicy.included,
   'investmentTreatment': SettingPolicy.included,
+  'investmentTreatmentCustomLabel': SettingPolicy.included,
   'reduceMotion': SettingPolicy.included,
   'hapticsEnabled': SettingPolicy.included,
 
@@ -91,6 +92,8 @@ const Map<String, SettingPolicy> kSettingPolicies = <String, SettingPolicy>{
   'notificationsEnabled': SettingPolicy.included,
   'paymentRemindersEnabled': SettingPolicy.included,
   'thresholdAlertsEnabled': SettingPolicy.included,
+  'thresholdQuietStartMinute': SettingPolicy.included,
+  'thresholdQuietEndMinute': SettingPolicy.included,
   'dailyRecordRemindersEnabled': SettingPolicy.included,
   'reminderFrequency': SettingPolicy.included,
   'reminderHour': SettingPolicy.included,

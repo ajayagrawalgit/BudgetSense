@@ -25,6 +25,13 @@ class PaperTexture extends StatelessWidget {
           child: IgnorePointer(
             child: RepaintBoundary(
               child: CustomPaint(
+                // The grain is thousands of tiny draw calls and it covers the
+                // entire window. `isComplex` asks the engine to cache the
+                // resulting raster, and `willChange: false` promises it is
+                // worth caching, because this only ever repaints when the
+                // brightness flips.
+                isComplex: true,
+                willChange: false,
                 painter: _PaperGrainPainter(brightness: brightness),
               ),
             ),

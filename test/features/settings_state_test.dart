@@ -16,6 +16,26 @@ void main() {
     expect(s.reminderSchedule.describe(), 'Every day at 10:00 PM');
   });
 
+  test('product defaults: notifications on, compact numbers and motion off',
+      () {
+    const s = SettingsState();
+    // Reminders are the point of the app, so they start on.
+    expect(s.notificationsEnabled, isTrue);
+    // Full figures by default: money should read exactly, not as "12.3K".
+    expect(s.numberFormatCompact, isFalse);
+    // Animation stays on unless the user (or the OS) asks otherwise.
+    expect(s.reduceMotion, isFalse);
+  });
+
+  test('a fresh install with no stored values gets those same defaults', () {
+    // fromMap is what actually runs on first launch, so its fallbacks must
+    // agree with the constructor defaults. They drifted apart before.
+    final fresh = SettingsState.fromMap(const {});
+    expect(fresh.notificationsEnabled, isTrue);
+    expect(fresh.numberFormatCompact, isFalse);
+    expect(fresh.reduceMotion, isFalse);
+  });
+
   test('round-trips the new fields through toMap/fromMap', () {
     const s = SettingsState(
       hapticsEnabled: false,

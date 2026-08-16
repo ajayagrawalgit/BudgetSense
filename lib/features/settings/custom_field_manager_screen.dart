@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/feature_providers.dart';
 import '../../core/constants/enums.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/validation/validators.dart';
 import '../../data/seed/default_data.dart';
 import '../../domain/entities/config_entities.dart';
 import '../common/calm_widgets.dart';
@@ -71,6 +72,7 @@ class CustomFieldManagerScreen extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 18),
+                        tooltip: 'Delete ${f.name}',
                         onPressed: () => ref
                             .read(customFieldRepositoryProvider)
                             .delete(f.id),
@@ -163,8 +165,7 @@ class _CustomFieldFormState extends State<_CustomFieldForm> {
                 TextFormField(
                   controller: _name,
                   decoration: const InputDecoration(labelText: 'Field name'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) => Validators.name(v, field: 'Field name'),
                 ),
                 const SizedBox(height: Insets.md),
                 DropdownButtonFormField<CustomFieldType>(

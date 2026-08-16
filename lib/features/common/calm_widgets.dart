@@ -2,10 +2,29 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../core/constants/branding.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/theme_resolver.dart';
+import '../../core/utils/friendly_date.dart';
 import '../../core/utils/haptics.dart';
 import 'brand_watermark.dart';
+import 'ink_veil.dart';
+
+/// The quiet heading that introduces a group of rows on settings-style
+/// screens.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Insets.sm, left: Insets.xs),
+      child: Text(text, style: Theme.of(context).textTheme.labelMedium),
+    );
+  }
+}
 
 /// The app's standard circular floating action button: flat (no elevation),
 /// accent-filled, calm. Each screen supplies its own icon/action so the button
@@ -101,16 +120,10 @@ class ShimmerBlock extends StatefulWidget {
 
 class _ShimmerBlockState extends State<ShimmerBlock>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
+  late final AnimationController _ctrl = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  );
 
   @override
   void dispose() {
@@ -121,26 +134,50 @@ class _ShimmerBlockState extends State<ShimmerBlock>
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, _) {
-        return Container(
-          width: widget.width,
-          height: widget.height,
+    final radius = BorderRadius.circular(widget.borderRadius);
+
+    // A sweeping highlight is decorative, and it loops. Reduce-motion means a
+    // plain resting block: still clearly a placeholder, just not moving.
+    if (context.reduceMotion) {
+      if (_ctrl.isAnimating) _ctrl.stop();
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            gradient: LinearGradient(
-              begin: Alignment(-1.0 + 2.0 * _ctrl.value, 0),
-              end: Alignment(1.0 + 2.0 * _ctrl.value, 0),
-              colors: [
-                colors.surfaceMuted,
-                colors.surface,
-                colors.surfaceMuted,
-              ],
+            borderRadius: radius,
+            color: colors.surfaceMuted,
+          ),
+        ),
+      );
+    }
+    if (!_ctrl.isAnimating) _ctrl.repeat();
+
+    // Skeletons come in groups, and each one animates on its own clock. The
+    // boundary keeps a block's repaints from dirtying its neighbours or the
+    // screen behind them.
+    return RepaintBoundary(
+      child: SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (context, _) => DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              gradient: LinearGradient(
+                begin: Alignment(-1.0 + 2.0 * _ctrl.value, 0),
+                end: Alignment(1.0 + 2.0 * _ctrl.value, 0),
+                colors: [
+                  colors.surfaceMuted,
+                  colors.surface,
+                  colors.surfaceMuted,
+                ],
+              ),
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }
@@ -329,6 +366,8 @@ class StatTile extends StatelessWidget {
     required this.value,
     this.valueColor,
     this.icon,
+    this.revealed = true,
+    this.veilSeed = 0,
     super.key,
   });
 
@@ -337,12 +376,19 @@ class StatTile extends StatelessWidget {
   final Color? valueColor;
   final IconData? icon;
 
+  /// When false the figure is brushed over with an [InkVeil]. The label and
+  /// icon stay legible: it is the amount that is private, not what it measures.
+  final bool revealed;
+
+  /// Varies the brushwork so a row of tiles does not repeat one identical mark.
+  final int veilSeed;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
     return Semantics(
-      label: '$label: $value',
+      label: revealed ? '$label: $value' : '$label: hidden',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -363,9 +409,13 @@ class StatTile extends StatelessWidget {
             ],
           ),
           const SizedBox(height: Insets.xs),
-          Text(
-            value,
-            style: text.titleMedium?.copyWith(color: valueColor),
+          InkVeil(
+            revealed: revealed,
+            seed: veilSeed,
+            child: Text(
+              value,
+              style: text.titleMedium?.copyWith(color: valueColor),
+            ),
           ),
         ],
       ),
@@ -412,7 +462,7 @@ class CalmProgressBar extends StatelessWidget {
 /// Hand-drawn line-art motifs for empty states, painted with a [CustomPainter]
 /// (no image assets, no packages). Quiet ink strokes with a single warm accent -
 /// a small piece of craft where most apps show a flat glyph.
-enum CalmIllustration { sprig, journal, wallet, calendar, coin, chart, enso }
+enum CalmIllustration { sprig, journal, calendar, chart, enso }
 
 /// Standard empty-state used across list screens - warm, not clinical. Prefers a
 /// hand-drawn [illustration] when one is given; otherwise falls back to [icon]
@@ -423,6 +473,7 @@ class CalmEmptyState extends StatelessWidget {
     required this.message,
     this.icon = Icons.spa_outlined,
     this.illustration,
+    this.brandAsset,
     super.key,
   });
 
@@ -431,18 +482,26 @@ class CalmEmptyState extends StatelessWidget {
   final IconData icon;
   final CalmIllustration? illustration;
 
+  /// A single-colour brand mask from [BrandAssets], drawn in the faint ink
+  /// colour. Reserved for the few states that carry real weight (a first run,
+  /// an empty journal); the painted [illustration] motifs cover the rest.
+  final String? brandAsset;
+
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
     final art = illustration;
+    final brand = brandAsset;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(Insets.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (art != null)
+            if (brand != null)
+              BrandMarks.tinted(brand, color: colors.textFaint, size: 92)
+            else if (art != null)
               SizedBox(
                 width: 76,
                 height: 76,
@@ -508,12 +567,8 @@ class _CalmIllustrationPainter extends CustomPainter {
         _paintSprig(canvas, stroke, soft, dot);
       case CalmIllustration.journal:
         _paintJournal(canvas, stroke, soft, dot);
-      case CalmIllustration.wallet:
-        _paintWallet(canvas, stroke, soft, dot);
       case CalmIllustration.calendar:
         _paintCalendar(canvas, stroke, soft, dot);
-      case CalmIllustration.coin:
-        _paintCoin(canvas, stroke, soft, dot);
       case CalmIllustration.chart:
         _paintChart(canvas, stroke, soft, dot);
       case CalmIllustration.enso:
@@ -574,25 +629,6 @@ class _CalmIllustrationPainter extends CustomPainter {
       ..drawCircle(const Offset(36, 22), 2.6, dot);
   }
 
-  void _paintWallet(Canvas c, Paint stroke, Paint soft, Paint dot) {
-    final body = RRect.fromRectAndRadius(
-      const Rect.fromLTWH(12, 22, 48, 32),
-      const Radius.circular(6),
-    );
-    c.drawRRect(body, stroke);
-    // The fold-over flap.
-    final flap = Path()
-      ..moveTo(12, 30)
-      ..lineTo(46, 30)
-      ..quadraticBezierTo(52, 30, 52, 36)
-      ..lineTo(52, 44)
-      ..quadraticBezierTo(52, 50, 46, 50)
-      ..lineTo(12, 50);
-    c.drawPath(flap, soft);
-    // The clasp button.
-    c.drawCircle(const Offset(46, 40), 3, dot);
-  }
-
   void _paintCalendar(Canvas c, Paint stroke, Paint soft, Paint dot) {
     final body = RRect.fromRectAndRadius(
       const Rect.fromLTWH(14, 18, 44, 40),
@@ -611,20 +647,6 @@ class _CalmIllustrationPainter extends CustomPainter {
       ..drawLine(const Offset(22, 48), const Offset(30, 48), soft)
       // The marked day.
       ..drawCircle(const Offset(44, 48), 3, dot);
-  }
-
-  void _paintCoin(Canvas c, Paint stroke, Paint soft, Paint dot) {
-    // A stacked pair of coins, the top one face-on.
-    final backRim = Rect.fromCenter(
-      center: const Offset(36, 44),
-      width: 34,
-      height: 14,
-    );
-    c.drawOval(backRim, soft);
-    c.drawCircle(const Offset(36, 32), 17, stroke);
-    c.drawCircle(const Offset(36, 32), 12, soft);
-    // A small accent glint.
-    c.drawCircle(const Offset(30, 26), 2.4, dot);
   }
 
   void _paintChart(Canvas c, Paint stroke, Paint soft, Paint dot) {
@@ -677,21 +699,6 @@ class MonthNavigator extends StatelessWidget {
   final VoidCallback onNext;
   final VoidCallback onReset;
 
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   bool get _isCurrentMonth {
     final now = DateTime.now();
     return focusedMonth.year == now.year && focusedMonth.month == now.month;
@@ -701,7 +708,7 @@ class MonthNavigator extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
-    final label = '${_months[focusedMonth.month - 1]} ${focusedMonth.year}';
+    final label = FriendlyDate.monthYear(focusedMonth);
 
     return Padding(
       padding: const EdgeInsets.symmetric(

@@ -93,7 +93,7 @@ void main() {
   });
 
   test('schemaVersion is the expected current version', () {
-    expect(db.schemaVersion, 4);
+    expect(db.schemaVersion, 5);
   });
 
   test('v4 adds the device-local import_ledger table', () async {

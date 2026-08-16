@@ -7,9 +7,10 @@ import '../core/constants/enums.dart';
 import '../core/constants/greetings.dart';
 import '../core/services/notification_service.dart';
 import '../core/utils/financial_calendar.dart';
+import '../core/utils/quiet_hours.dart';
 import '../core/utils/money.dart';
+import '../data/local/threshold_alert_log.dart';
 import '../data/repositories/custom_field_repository.dart';
-import '../data/seed/default_data.dart';
 import '../domain/entities/transaction_entity.dart';
 import '../data/repositories/loan_repository.dart';
 import '../data/repositories/recurring_payment_repository.dart';
@@ -21,9 +22,12 @@ import '../data/snapshot/app_snapshot_service.dart';
 import '../domain/services/export_service.dart';
 import '../domain/services/import_service.dart';
 import '../domain/services/insights_service.dart';
+import '../domain/services/month_close_service.dart';
 import '../domain/services/recurrence_service.dart';
 import '../domain/services/reminder_planner.dart';
 import '../domain/services/snapshot_service.dart';
+import '../domain/services/threshold_alert_dispatcher.dart';
+import '../domain/services/threshold_alert_planner.dart';
 import '../domain/services/threshold_service.dart';
 import '../features/settings/settings_controller.dart';
 import '../features/settings/settings_state.dart';
@@ -70,6 +74,20 @@ final notificationServiceProvider =
 final reminderPlannerProvider =
     Provider<ReminderPlanner>((_) => const ReminderPlanner());
 
+final thresholdAlertPlannerProvider =
+    Provider<ThresholdAlertPlanner>((_) => const ThresholdAlertPlanner());
+
+final thresholdAlertLogProvider =
+    Provider<ThresholdAlertLog>((_) => const PrefsThresholdAlertLog());
+
+final thresholdAlertDispatcherProvider = Provider<ThresholdAlertDispatcher>(
+  (ref) => ThresholdAlertDispatcher(
+    planner: ref.watch(thresholdAlertPlannerProvider),
+    log: ref.watch(thresholdAlertLogProvider),
+    notifications: ref.watch(notificationServiceProvider),
+  ),
+);
+
 /// Imports data exported from other budgeting apps (Paisa, and more later).
 final dataImportServiceProvider = Provider<DataImportService>(
   (ref) => DriftPaisaImportService(ref.watch(databaseProvider)),
@@ -95,6 +113,9 @@ final snapshotServiceProvider = Provider<SnapshotService>(
 
 final insightsServiceProvider =
     Provider<InsightsService>((_) => const InsightsService());
+
+final monthCloseServiceProvider =
+    Provider<MonthCloseService>((_) => const MonthCloseService());
 
 /// Picks a greeting template for the dashboard. Computed once per app launch
 /// (the provider is cached for the container's lifetime), so the user sees a
@@ -250,39 +271,154 @@ void refreshAllDataProviders(WidgetRef ref) {
   ref.invalidate(thresholdsStreamProvider);
 }
 
-/// Rolls every auto-adding recurring payment forward to the present.
+/// Rolls overdue recurring-payment schedules forward to the present WITHOUT
+/// creating any transaction.
 ///
-/// Called once on launch (and whenever the app returns to the current month):
-/// for each recurring payment whose due date has arrived, it posts that
-/// period's expense and advances the schedule via [RecurrenceService.catchUp].
-/// This is what makes a monthly/weekly/yearly commitment "recreate itself" each
-/// period without the user tapping anything. Idempotent, so calling it twice in
-/// a day is harmless. Manual (non-auto-add) payments are left for the user to
-/// "Mark paid". Returns how many transactions were posted.
-Future<int> catchUpRecurringPayments(WidgetRef ref) async {
+/// BudgetSense never posts money the user did not confirm. A recurring payment
+/// (SIP, rent, subscription, EMI) only becomes a real expense when the user
+/// taps "Mark paid". All this does is stop a payment that came due while the
+/// app was closed from being stuck showing a due date in the distant past.
+///
+/// Idempotent, so running it on every launch is harmless. Returns how many
+/// payment schedules were moved forward.
+Future<int> rollRecurringSchedulesForward(WidgetRef ref) async {
   final repo = ref.read(recurringPaymentRepositoryProvider);
-  final txnRepo = ref.read(transactionRepositoryProvider);
   final service = ref.read(recurrenceServiceProvider);
 
   final payments = await repo.getAll();
   final now = DateTime.now();
-  var posted = 0;
+  var rolled = 0;
 
   for (final payment in payments) {
-    if (!payment.autoAddTransaction) continue;
-    final result = service.catchUp(
-      payment,
-      now: now,
-      newId: DefaultDataSeeder.newId,
-    );
-    if (result.transactions.isEmpty) continue;
-    for (final txn in result.transactions) {
-      await txnRepo.upsert(txn);
+    final updated = service.rollScheduleForward(payment, now: now);
+    if (updated.nextDueDate == payment.nextDueDate &&
+        updated.archivedAt == payment.archivedAt) {
+      continue;
     }
-    await repo.upsert(result.updated);
-    posted += result.transactions.length;
+    await repo.upsert(updated);
+    rolled++;
   }
 
-  if (posted > 0) refreshAllDataProviders(ref);
-  return posted;
+  if (rolled > 0) refreshAllDataProviders(ref);
+  return rolled;
 }
+
+/// Ids we scheduled on the previous pass, so the next pass can cancel any that
+/// no longer apply (payment deleted, archived, or its reminder turned off).
+/// Session-scoped: a cold start recomputes everything from scratch anyway.
+Set<int> _lastScheduledReminderIds = {};
+
+/// Re-lays payment/loan due reminders from the current data. [ReminderPlanner]
+/// gives each alert a stable id per payment/loan, so calling this again after
+/// an edit simply overwrites the old alarm with the new due date.
+///
+/// This used to be reachable only via the "Reschedule all notifications"
+/// button buried in Settings, so a newly added or edited payment silently
+/// never got a reminder unless the user found that button. Call this instead
+/// on cold start (after catch-up, since that can shift due dates) and
+/// reactively whenever payments or loans change.
+Future<void> reschedulePaymentReminders(WidgetRef ref) async {
+  final settings = ref.read(settingsControllerProvider).valueOrNull;
+  final service = ref.read(notificationServiceProvider);
+  if (settings == null || !settings.notificationsEnabled) {
+    if (_lastScheduledReminderIds.isNotEmpty) {
+      for (final id in _lastScheduledReminderIds) {
+        await service.cancel(id);
+      }
+      _lastScheduledReminderIds = {};
+    }
+    return;
+  }
+
+  final planner = ref.read(reminderPlannerProvider);
+  final payments =
+      ref.read(recurringPaymentsStreamProvider).valueOrNull ?? const [];
+  final loans = ref.read(loansStreamProvider).valueOrNull ?? const [];
+  final now = DateTime.now();
+
+  final alerts = [
+    ...planner.planForPayments(payments, now: now),
+    ...planner.planForLoans(loans, now: now),
+  ];
+  final newIds = alerts.map((a) => a.id).toSet();
+
+  for (final staleId in _lastScheduledReminderIds.difference(newIds)) {
+    await service.cancel(staleId);
+  }
+  for (final alert in alerts) {
+    await service.schedule(alert);
+  }
+  _lastScheduledReminderIds = newIds;
+}
+
+/// Delivers any newly-escalated threshold alert for the *current* financial
+/// month. Historical month browsing must never generate a notification.
+///
+/// Safe to call after every threshold, transaction or settings update: the
+/// dispatcher owns the idempotency receipt and serializes overlapping calls.
+Future<void> dispatchCurrentThresholdAlerts(WidgetRef ref) async {
+  final settings = ref.read(settingsControllerProvider).valueOrNull;
+  if (settings == null || !settings.notificationsEnabled) return;
+
+  final calendar = ref.read(financialCalendarProvider);
+  final now = DateTime.now();
+  final focused = ref.read(focusedMonthProvider);
+  if (calendar.monthKeyFor(focused) != calendar.monthKeyFor(now)) return;
+
+  await ref.read(thresholdAlertDispatcherProvider).dispatch(
+        ref.read(thresholdEvaluationsProvider),
+        monthKey: calendar.monthKeyFor(now),
+        enabled: settings.thresholdAlertsEnabled,
+        now: now,
+        quietHours: QuietHours(
+          startMinute: settings.thresholdQuietStartMinute,
+          endMinute: settings.thresholdQuietEndMinute,
+        ),
+      );
+}
+
+/// The quietly completed financial month, assembled from the exact same local
+/// transactions and threshold rules used by the rest of the app.
+final lastCompletedMonthCloseProvider = Provider<MonthCloseReport>((ref) {
+  final transactions =
+      ref.watch(lastCompletedMonthTransactionsProvider).valueOrNull ?? const [];
+  final before =
+      ref.watch(monthBeforeLastCompletedTransactionsProvider).valueOrNull ??
+          const [];
+  final settings = ref.watch(settingsControllerProvider).valueOrNull ??
+      const SettingsState();
+  final summaryService = ref.watch(summaryServiceProvider);
+  final summary = summaryService.summarize(
+    transactions,
+    investmentTreatment: settings.investmentTreatment,
+  );
+  final previous = summaryService.summarize(
+    before,
+    investmentTreatment: settings.investmentTreatment,
+  );
+  final rules = ref.watch(thresholdsStreamProvider).valueOrNull ?? const [];
+  final thresholdService = ref.watch(thresholdServiceProvider);
+
+  Money actualFor(String? scopeKey) => switch (scopeKey) {
+        'investments' => summary.totalInvestments,
+        'unallocated' =>
+          summary.totalSavings.isNegative ? Money.zero : summary.totalSavings,
+        _ => summary.perCategory[scopeKey] ?? Money.zero,
+      };
+
+  final evaluations = <ThresholdEvaluation>[
+    for (final rule in rules)
+      if (rule.enabled)
+        thresholdService.evaluate(
+          rule,
+          actual: actualFor(rule.scopeKey),
+          monthlyIncome: summary.totalGains,
+        ),
+  ];
+  return ref.watch(monthCloseServiceProvider).build(
+        summary: summary,
+        previousSummary: previous,
+        transactions: transactions,
+        thresholds: evaluations,
+      );
+});

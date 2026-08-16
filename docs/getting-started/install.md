@@ -21,10 +21,11 @@ right on your phone.
 4. Open BudgetSense. That is it. There is nothing to sign up for.
 
 !!! question "Is this safe?"
-    Yes. Everything you enter stays on your own phone. No account, no ads, no
-    tracking, and the complete source code is public in this repository for
-    anyone to read. The Android warning appears for every app installed outside
-    the Play Store; it does not mean anything is wrong.
+    The Android warning appears for every app installed outside the Play Store,
+    so it does not mean anything is wrong. Everything you enter stays on your own
+    phone unless you turn on cloud backup yourself. There is no account, no ads,
+    and no tracking, and the complete source code is public in this repository
+    for anyone to read.
 
 ## On an iPhone?
 

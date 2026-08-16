@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Launcher and system-settings name for the app. Translations must keep
+         the brand spelled "BudgetSense". -->
+    <string name="app_name" translatable="false">BudgetSense</string>
+
     <string name="widget_dashboard_label">BudgetSense · Overview</string>
     <string name="widget_dashboard_desc">Your monthly balance, income, spend and investments. Make it taller to see where it went.</string>
     <string name="widget_quick_add_label">BudgetSense · Quick add</string>
     <string name="widget_quick_add_desc">Tap to add an expense in a couple of taps.</string>
     <string name="widget_insights_label">BudgetSense · Insights</string>
     <string name="widget_insights_desc">Income vs expenses at a glance. Make it taller for more detail.</string>
+
+    <string name="widget_this_month">This month</string>
+    <string name="widget_insights_title">Insights</string>
+    <!-- The "+" on the compact add buttons. A resource so right-to-left and
+         non-Latin locales can substitute their own glyph. -->
+    <string name="widget_add_symbol">+</string>
 
     <string name="widget_add_expense">Add expense</string>
     <string name="widget_where_it_went">Where it went</string>
@@ -37,7 +47,6 @@
     <string name="widget_glance_desc">How many expenses, the average, and the biggest.</string>
 
     <string name="widget_next_due_title">Next due</string>
-    <string name="widget_runway_title">Runway</string>
     <string name="widget_rates_title">Rates</string>
     <string name="widget_glance_title">This month at a glance</string>
     <string name="widget_count">Expenses</string>
@@ -49,5 +58,4 @@
     <!-- No-spend graph -->
     <string name="widget_no_spend_label">BudgetSense · No-spend graph</string>
     <string name="widget_no_spend_desc">A calendar of no-spend days, filled in when you keep a day expense-free.</string>
-    <string name="widget_no_spend_title">No-spend days</string>
 </resources>

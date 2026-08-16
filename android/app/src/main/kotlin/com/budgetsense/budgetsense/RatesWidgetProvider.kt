@@ -1,42 +1,26 @@
 package com.budgetsense.budgetsense
 
-import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.widget.RemoteViews
 
 /** Rates widget: savings and invested rates as two labelled bars. */
-class RatesWidgetProvider : AppWidgetProvider() {
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray,
-    ) {
-        for (id in appWidgetIds) {
-            val views = RemoteViews(context.packageName, R.layout.widget_rates)
-            views.setTextViewText(
-                R.id.month_label,
-                WidgetSupport.value(context, "monthLabel", "This month"),
-            )
-            views.setTextViewText(
-                R.id.savings_rate_value,
-                WidgetSupport.value(context, "savingsRate"),
-            )
-            views.setTextViewText(
-                R.id.invest_rate_value,
-                WidgetSupport.value(context, "investmentRate"),
-            )
-            val savings =
-                WidgetSupport.value(context, "savingsRateNum", "0").toIntOrNull() ?: 0
-            val invest =
-                WidgetSupport.value(context, "investmentRateNum", "0").toIntOrNull() ?: 0
-            views.setProgressBar(R.id.savings_bar, 100, savings.coerceIn(0, 100), false)
-            views.setProgressBar(R.id.invest_bar, 100, invest.coerceIn(0, 100), false)
-            views.setOnClickPendingIntent(
-                R.id.widget_root,
-                WidgetSupport.openAppIntent(context),
-            )
-            appWidgetManager.updateAppWidget(id, views)
-        }
+class RatesWidgetProvider : SimpleWidgetProvider(R.layout.widget_rates) {
+    override val textBindings = listOf(
+        TextBinding(R.id.month_label, "monthLabel", "This month"),
+        TextBinding(R.id.savings_rate_value, "savingsRate"),
+        TextBinding(R.id.invest_rate_value, "investmentRate"),
+    )
+
+    override fun onBind(context: Context, views: RemoteViews) {
+        views.setProgressBar(R.id.savings_bar, 100, context.percent("savingsRateNum"), false)
+        views.setProgressBar(R.id.invest_bar, 100, context.percent("investmentRateNum"), false)
     }
 }
+
+/**
+ * Reads a 0..100 percentage from widget prefs. Values are masked to
+ * non-numeric text while app-lock is on, so an unparseable value deliberately
+ * collapses the bar to zero rather than leaking the shape of the data.
+ */
+internal fun Context.percent(key: String): Int =
+    (WidgetSupport.value(this, key, "0").toIntOrNull() ?: 0).coerceIn(0, 100)

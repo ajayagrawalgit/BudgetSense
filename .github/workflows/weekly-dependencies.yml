@@ -1,0 +1,225 @@
+name: Weekly dependency care
+
+# Every Monday at 00:00 IST, look for dependency updates that are safe to take,
+# apply them, prove they did not break anything, and open a pull request. If
+# the full quality gate does not pass afterwards, no PR is opened. A red PR is
+# worse than no PR, because it trains you to merge without looking.
+#
+# Nothing here merges anything. A human still reviews and merges.
+on:
+  schedule:
+    # 00:00 IST is 18:30 UTC the previous day. IST is UTC+5:30 year round, with
+    # no daylight saving, so this single expression is correct all year.
+    # Sunday 18:30 UTC == Monday 00:00 IST.
+    - cron: "30 18 * * 0"
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: "Which updates to take"
+        required: false
+        default: safe
+        type: choice
+        options:
+          - safe # patch and minor only, inside existing constraints
+          - security-only # only what a vulnerability scan flags
+
+concurrency:
+  group: weekly-deps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.44.4
+  BRANCH: automated/dependency-update
+
+jobs:
+  update:
+    name: Find, apply and verify safe updates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write # push the update branch
+      pull-requests: write # open the PR
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # ---------------------------------------------------------------
+      # 1. Record the "before" picture so the PR body can explain itself.
+      # ---------------------------------------------------------------
+      - name: Snapshot current dependency state
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/deps
+          cp pubspec.lock /tmp/deps/pubspec.lock.before
+          flutter pub outdated --json > /tmp/deps/outdated.before.json || true
+
+      # ---------------------------------------------------------------
+      # 2. Which packages are actually vulnerable right now? This decides
+      #    whether an update is "security" or merely "housekeeping", and it
+      #    is what makes security-only mode meaningful.
+      #
+      #    Uses the same pinned action as security.yml rather than curling a
+      #    binary, so there is exactly one osv-scanner supply chain to trust.
+      #    Advisory on purpose: finding a vulnerability is the reason to keep
+      #    going, not a reason to abort before fixing it.
+      # ---------------------------------------------------------------
+      - name: Scan for known vulnerabilities (advisory)
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
+            --format=json
+            --output=/tmp/deps/osv.before.json
+
+      - name: Count vulnerabilities found
+        id: osv
+        run: |
+          set -uo pipefail
+          count=$(python3 tool/dependency_update_report.py --count /tmp/deps/osv.before.json)
+          echo "vulns=$count" >> "$GITHUB_OUTPUT"
+          echo "Known vulnerabilities before update: $count"
+
+      # ---------------------------------------------------------------
+      # 3. Apply updates.
+      #
+      #    `flutter pub upgrade` stays inside the constraints already declared
+      #    in pubspec.yaml, so it takes patch and minor releases and refuses
+      #    anything that would need a constraint change. That is exactly the
+      #    line we want an unattended robot to respect: a major bump can change
+      #    behaviour, and behaviour changes need a human.
+      #
+      #    Majors are reported in the PR body instead, so they are visible
+      #    without being applied silently.
+      # ---------------------------------------------------------------
+      - name: Apply in-constraint updates
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.scope || 'safe' }}" = "security-only" ] && [ "${{ steps.osv.outputs.vulns }}" = "0" ]; then
+            echo "security-only requested and nothing is vulnerable. Leaving the lockfile alone."
+          else
+            flutter pub upgrade
+          fi
+
+      - name: Stop early if nothing changed
+        id: diff
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- pubspec.lock pubspec.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Dependencies are already current. Nothing to do."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff --stat -- pubspec.lock pubspec.yaml
+          fi
+
+      # ---------------------------------------------------------------
+      # 4. Prove the update is safe. This is the whole point of the job.
+      #    These are the same checks ci.yml runs on a pull request, so an
+      #    automated PR is held to the identical standard as a human one.
+      #    Any failure here fails the workflow and no PR is created.
+      # ---------------------------------------------------------------
+      - name: Reinstall at new versions
+        if: steps.diff.outputs.changed == 'true'
+        run: flutter pub get
+
+      - name: Generate code (Drift/build_runner)
+        if: steps.diff.outputs.changed == 'true'
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Check formatting
+        if: steps.diff.outputs.changed == 'true'
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Analyze
+        if: steps.diff.outputs.changed == 'true'
+        run: flutter analyze
+
+      - name: Placeholder / debug-config scan
+        if: steps.diff.outputs.changed == 'true'
+        run: bash scripts/check_placeholders.sh
+
+      - name: Run the full test suite
+        if: steps.diff.outputs.changed == 'true'
+        run: flutter test --coverage --concurrency=1 --reporter expanded
+
+      - name: Enforce coverage gate
+        if: steps.diff.outputs.changed == 'true'
+        run: python3 tool/coverage_report.py --threshold 70
+
+      - name: Security gate
+        if: steps.diff.outputs.changed == 'true'
+        run: bash scripts/security_gate.sh
+
+      # A dependency change can break the Android build without upsetting a
+      # single Dart test, usually through a transitive Gradle or NDK bump.
+      # Building the release APK is the only way to know.
+      - name: Build release APK (unsigned, proves the app still ships)
+        if: steps.diff.outputs.changed == 'true'
+        run: flutter build apk --release
+
+      - name: Rescan after update (advisory)
+        if: steps.diff.outputs.changed == 'true'
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@v1.9.1
+        with:
+          scan-args: |-
+            --lockfile=pubspec.lock
+            --format=json
+            --output=/tmp/deps/osv.after.json
+
+      - name: Confirm vulnerabilities actually went down
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          set -uo pipefail
+          before=$(python3 tool/dependency_update_report.py --count /tmp/deps/osv.before.json)
+          after=$(python3 tool/dependency_update_report.py --count /tmp/deps/osv.after.json)
+          echo "vulnerabilities before: $before"
+          echo "vulnerabilities after:  $after"
+          if [ "$after" -gt "$before" ]; then
+            echo "::error::The update introduced more known vulnerabilities than it removed."
+            exit 1
+          fi
+
+      # ---------------------------------------------------------------
+      # 5. Write a PR body a human can actually act on.
+      # ---------------------------------------------------------------
+      - name: Compose PR body
+        if: steps.diff.outputs.changed == 'true'
+        run: python3 tool/dependency_update_report.py > /tmp/deps/pr-body.md
+
+      - name: Open pull request
+        if: steps.diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ env.BRANCH }}
+          delete-branch: true
+          base: main
+          commit-message: "chore(deps): weekly dependency update"
+          title: "chore(deps): weekly dependency update"
+          body-path: /tmp/deps/pr-body.md
+          labels: dependencies
+          add-paths: |
+            pubspec.yaml
+            pubspec.lock

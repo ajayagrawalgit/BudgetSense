@@ -1,13 +1,14 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/feature_providers.dart';
 import '../../app/providers.dart';
+import '../../core/constants/branding.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/category_icons.dart';
 import '../../core/theme/theme_resolver.dart';
+import '../../core/utils/friendly_date.dart';
 import '../../core/utils/greeting.dart';
 import '../../core/utils/money.dart';
 import '../../domain/entities/transaction_entity.dart';
@@ -15,10 +16,11 @@ import '../../domain/services/summary_service.dart';
 import '../common/calm_widgets.dart';
 import '../common/confetti_overlay.dart';
 import '../common/feedback_widgets.dart';
+import '../common/ink_flourishes.dart';
+import '../common/ink_veil.dart';
 import '../quick_add/quick_add_sheet.dart';
 import '../settings/settings_controller.dart';
 import '../settings/settings_state.dart';
-import '../updates/update_banner.dart';
 import 'month_calendar.dart';
 import 'mood_strip.dart';
 import 'quick_add_card.dart';
@@ -43,21 +45,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   /// eye reveals the rest. Session-scoped on purpose (re-hides on relaunch).
   bool _revealValues = false;
 
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   bool _isCurrentMonth(DateTime m) {
     final now = DateTime.now();
     return m.year == now.year && m.month == now.month;
@@ -81,14 +68,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final txnsAsync = ref.watch(monthTransactionsProvider);
     final summary = ref.watch(monthlySummaryProvider);
     final cats = ref.watch(categoriesStreamProvider).valueOrNull ?? const [];
-    final settings = ref.watch(settingsControllerProvider).valueOrNull;
+    final settings =
+        ref.watch(settingsControllerProvider).valueOrNull.orDefaults;
     final focused = ref.watch(focusedMonthProvider);
-    final symbol = settings?.currencySymbol ?? '₹';
-    final locale = settings?.localeCode;
+    final calendar = ref.watch(financialCalendarProvider);
+    final isMonthOpening =
+        calendar.monthRangeFor(DateTime.now()).start.day == DateTime.now().day;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
-    String money(Money v) => v.format(currencySymbol: symbol, locale: locale);
+    String money(Money v) => settings.formatMoney(v);
 
     final txns = txnsAsync.valueOrNull ?? const [];
 
@@ -100,7 +89,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ref.watch(overduePaymentsProvider).isEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+        actions: [
+          if (isMonthOpening)
+            IconButton(
+              tooltip: 'Last month, in brief',
+              onPressed: () => context.push('/month-close'),
+              icon: const Icon(Icons.auto_stories_outlined),
+            ),
+        ],
+      ),
       floatingActionButton: CalmFab(
         tooltip: 'Add transaction',
         heroTag: 'fab_dashboard',
@@ -110,10 +109,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         child: Column(
           children: [
             _GreetingHeader(settings: settings),
-
-            // Gentle, dismissible "new version available" offer (sideloaded
-            // builds). Shows nothing unless an update is actually available.
-            const UpdateBanner(),
 
             // Month area: swipe left/right to change month, tap to expand the
             // calendar. This whole region owns horizontal drags, so the section
@@ -139,8 +134,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           ? MonthCalendar(
                               month: focused,
                               transactions: txnsAsync.valueOrNull ?? const [],
-                              currencySymbol: symbol,
-                              locale: locale,
+                              currencySymbol: settings.currencySymbol,
+                              locale: settings.localeCode,
+                              compact: settings.numberFormatCompact,
                             )
                           : const SizedBox(width: double.infinity),
                     ),
@@ -150,189 +146,203 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
 
             Expanded(
-              child: txnsAsync.isLoading
-                  ? const DashboardSkeleton()
-                  : txns.isEmpty
-                      ? (_isCurrentMonth(focused)
-                          // A fresh month still shows the delight (enso, sprig,
-                          // weather) so the craft is there from day one, with a
-                          // gentle nudge to log the first entry.
-                          ? ListView(
-                              padding: const EdgeInsets.all(Insets.lg),
-                              children: const [
-                                SizedBox(height: Insets.md),
-                                CalmEmptyState(
-                                  title: 'A calm, clean slate',
-                                  message: 'Tap the + below to log your '
-                                      'first income or expense. Your balance '
-                                      'and insights grow from here.',
-                                  illustration: CalmIllustration.enso,
-                                ),
-                                SizedBox(height: Insets.lg),
-                                MoodStrip(),
-                                SizedBox(height: Insets.lg),
-                                _PaymentsCard(),
-                              ],
-                            )
-                          : _EmptyDashboard(
-                              monthLabel: _months[focused.month - 1],
-                            ))
-                      : ListView(
-                          padding: const EdgeInsets.all(Insets.lg),
-                          children: [
-                            // Balance headline. Balance is always visible; the
-                            // three sub-figures hide behind a blur until revealed.
-                            CalmCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
+              child: OverPullRipple(
+                child: txnsAsync.isLoading
+                    ? const DashboardSkeleton()
+                    : txns.isEmpty
+                        ? (_isCurrentMonth(focused)
+                            // A fresh month still shows the delight (enso, sprig,
+                            // weather) so the craft is there from day one, with a
+                            // gentle nudge to log the first entry.
+                            ? ListView(
+                                padding: const EdgeInsets.all(Insets.lg),
+                                children: const [
+                                  SizedBox(height: Insets.md),
+                                  CalmEmptyState(
+                                    title: 'A calm, clean slate',
+                                    message: 'Tap the + below to log your '
+                                        'first income or expense. Your balance '
+                                        'and insights grow from here.',
+                                    brandAsset: BrandAssets.ensoRing,
+                                  ),
+                                  SizedBox(height: Insets.lg),
+                                  MoodStrip(),
+                                  SizedBox(height: Insets.lg),
+                                  _PaymentsCard(),
+                                ],
+                              )
+                            : _EmptyDashboard(
+                                monthLabel:
+                                    FriendlyDate.monthName(focused.month),
+                              ))
+                        : ListView(
+                            padding: const EdgeInsets.all(Insets.lg),
+                            children: [
+                              // Balance headline. Balance is always visible; the
+                              // three sub-figures hide behind a blur until revealed.
+                              SealableSummary(
+                                closed: !_isCurrentMonth(focused),
+                                child: CalmCard(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Text(
-                                          'Balance this month',
-                                          style: text.labelMedium,
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              'Balance this month',
+                                              style: text.labelMedium,
+                                            ),
+                                          ),
+                                          _EyeToggle(
+                                            revealed: _revealValues,
+                                            onTap: () {
+                                              setState(
+                                                () => _revealValues =
+                                                    !_revealValues,
+                                              );
+                                              Haptics.selection();
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: Insets.xs),
+                                      InkVeil(
+                                        revealed: _revealValues,
+                                        child: BreathingPulse(
+                                          enabled: calm,
+                                          child: AnimatedMoneyText(
+                                            minorUnits:
+                                                summary.totalBalance.minorUnits,
+                                            format: (m) => money(Money(m)),
+                                            style: text.displaySmall?.copyWith(
+                                              color: colors.textPrimary,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                      _EyeToggle(
-                                        revealed: _revealValues,
-                                        onTap: () {
-                                          setState(
-                                            () =>
-                                                _revealValues = !_revealValues,
-                                          );
-                                          Haptics.selection();
-                                        },
+                                      if (summary.totalBalance.isNegative) ...[
+                                        const SizedBox(height: Insets.xs),
+                                        Text(
+                                          "You've spent a little more than you earned "
+                                          'this month.',
+                                          style: text.bodySmall?.copyWith(
+                                            color: colors.textSecondary,
+                                          ),
+                                        ),
+                                      ] else if (summary.positiveNote !=
+                                          null) ...[
+                                        const SizedBox(height: Insets.xs),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.spa_outlined,
+                                              size: 14,
+                                              color: colors.positive,
+                                            ),
+                                            const SizedBox(width: Insets.xs),
+                                            Expanded(
+                                              child: Text(
+                                                summary.positiveNote!,
+                                                style: text.bodySmall?.copyWith(
+                                                  color: colors.textSecondary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                      const SizedBox(height: Insets.md),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: StatTile(
+                                              label: 'Income',
+                                              value: money(summary.totalGains),
+                                              icon: Icons.south_west,
+                                              valueColor: colors.positive,
+                                              revealed: _revealValues,
+                                              veilSeed: 1,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: StatTile(
+                                              label: 'Spent',
+                                              value: money(summary.totalSpent),
+                                              icon: Icons.north_east,
+                                              valueColor: colors.negative,
+                                              revealed: _revealValues,
+                                              veilSeed: 2,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: StatTile(
+                                              label: 'Invested',
+                                              value: money(
+                                                summary.totalInvestments,
+                                              ),
+                                              icon: Icons.savings_outlined,
+                                              valueColor: colors.info,
+                                              revealed: _revealValues,
+                                              veilSeed: 3,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: Insets.xs),
-                                  BreathingPulse(
-                                    enabled: calm,
-                                    child: AnimatedMoneyText(
-                                      minorUnits:
-                                          summary.totalBalance.minorUnits,
-                                      format: (m) => money(Money(m)),
-                                      style: text.displaySmall?.copyWith(
-                                        color: colors.textPrimary,
-                                      ),
+                                ),
+                              ),
+                              const SizedBox(height: Insets.lg),
+
+                              // Fast path: log one expense without leaving home.
+                              const QuickAddCard(),
+                              const SizedBox(height: Insets.lg),
+
+                              // Purely-for-delight: ensō, sprig and wallet
+                              // weather. A feeling for the month, not a metric.
+                              const MoodStrip(),
+                              const SizedBox(height: Insets.lg),
+
+                              // Secondary sections: collapsed by default to keep the
+                              // home screen calm and uncluttered.
+                              CollapsibleCard(
+                                title: 'Where it went',
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: _whereItWentRows(
+                                      context, summary, cats, money),
+                                ),
+                              ),
+                              const SizedBox(height: Insets.lg),
+
+                              CollapsibleCard(
+                                title: 'Rates',
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _rateRow(
+                                      context,
+                                      'Savings rate',
+                                      summary.savingsRate,
+                                      colors.positive,
                                     ),
-                                  ),
-                                  if (summary.totalBalance.isNegative) ...[
-                                    const SizedBox(height: Insets.xs),
-                                    Text(
-                                      "You've spent a little more than you earned "
-                                      'this month.',
-                                      style: text.bodySmall?.copyWith(
-                                        color: colors.textSecondary,
-                                      ),
-                                    ),
-                                  ] else if (summary.positiveNote != null) ...[
-                                    const SizedBox(height: Insets.xs),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.spa_outlined,
-                                          size: 14,
-                                          color: colors.positive,
-                                        ),
-                                        const SizedBox(width: Insets.xs),
-                                        Expanded(
-                                          child: Text(
-                                            summary.positiveNote!,
-                                            style: text.bodySmall?.copyWith(
-                                              color: colors.textSecondary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                    const SizedBox(height: Insets.md),
+                                    _rateRow(
+                                      context,
+                                      'Investment rate',
+                                      summary.investmentRate,
+                                      colors.info,
                                     ),
                                   ],
-                                  const SizedBox(height: Insets.md),
-                                  _HideableRow(
-                                    revealed: _revealValues,
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          child: StatTile(
-                                            label: 'Income',
-                                            value: money(summary.totalGains),
-                                            icon: Icons.south_west,
-                                            valueColor: colors.positive,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: StatTile(
-                                            label: 'Spent',
-                                            value: money(summary.totalSpent),
-                                            icon: Icons.north_east,
-                                            valueColor: colors.negative,
-                                          ),
-                                        ),
-                                        Expanded(
-                                          child: StatTile(
-                                            label: 'Invested',
-                                            value: money(
-                                              summary.totalInvestments,
-                                            ),
-                                            icon: Icons.savings_outlined,
-                                            valueColor: colors.info,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: Insets.lg),
-
-                            // Fast path: log one expense without leaving home.
-                            const QuickAddCard(),
-                            const SizedBox(height: Insets.lg),
-
-                            // Purely-for-delight: ensō, sprig and wallet
-                            // weather. A feeling for the month, not a metric.
-                            const MoodStrip(),
-                            const SizedBox(height: Insets.lg),
-
-                            // Secondary sections: collapsed by default to keep the
-                            // home screen calm and uncluttered.
-                            CollapsibleCard(
-                              title: 'Where it went',
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _whereItWentRows(
-                                    context, summary, cats, money),
-                              ),
-                            ),
-                            const SizedBox(height: Insets.lg),
-
-                            CollapsibleCard(
-                              title: 'Rates',
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _rateRow(
-                                    context,
-                                    'Savings rate',
-                                    summary.savingsRate,
-                                    colors.positive,
-                                  ),
-                                  const SizedBox(height: Insets.md),
-                                  _rateRow(
-                                    context,
-                                    'Investment rate',
-                                    summary.investmentRate,
-                                    colors.info,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: Insets.lg),
-                            const _PaymentsCard(),
-                          ],
-                        ),
+                              const SizedBox(height: Insets.lg),
+                              const _PaymentsCard(),
+                            ],
+                          ),
+              ),
             ),
           ],
         ),
@@ -344,7 +354,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final colors = context.colors;
     final text = Theme.of(context).textTheme;
     final isCurrent = _isCurrentMonth(focused);
-    final label = '${_months[focused.month - 1]} ${focused.year}';
+    final label = FriendlyDate.monthYear(focused);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -385,12 +395,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                     if (!isCurrent) ...[
                       const SizedBox(width: Insets.sm),
-                      GestureDetector(
-                        onTap: _resetToday,
-                        child: Icon(
-                          Icons.today,
-                          size: 14,
-                          color: colors.accent,
+                      Semantics(
+                        button: true,
+                        label: 'Back to this month',
+                        child: GestureDetector(
+                          onTap: _resetToday,
+                          child: Icon(
+                            Icons.today,
+                            size: 14,
+                            color: colors.accent,
+                          ),
                         ),
                       ),
                     ],
@@ -562,9 +576,8 @@ class _PaymentsCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final due = ref.watch(overduePaymentsProvider);
-    final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
-    final locale = settings?.localeCode;
+    final settings =
+        ref.watch(settingsControllerProvider).valueOrNull.orDefaults;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -642,7 +655,7 @@ class _PaymentsCard extends ConsumerWidget {
                   const SizedBox(width: Insets.sm),
                   Expanded(child: Text(p.name, style: text.bodyMedium)),
                   Text(
-                    p.amount.format(currencySymbol: symbol, locale: locale),
+                    settings.formatMoney(p.amount),
                     style: text.titleSmall,
                   ),
                 ],
@@ -673,39 +686,6 @@ class _EyeToggle extends StatelessWidget {
         color: colors.textFaint,
       ),
       onPressed: onTap,
-    );
-  }
-}
-
-/// Wraps sensitive figures in a heavy blur until [revealed]. The blur is strong
-/// enough that the underlying numbers cannot be read or guessed.
-class _HideableRow extends StatelessWidget {
-  const _HideableRow({required this.revealed, required this.child});
-
-  final bool revealed;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    if (revealed) return child;
-    return ClipRect(
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-            // Exclude the blurred figures from the semantics tree so screen
-            // readers don't announce hidden amounts.
-            child: ExcludeSemantics(child: child),
-          ),
-          Positioned.fill(
-            child: Semantics(
-              label: 'Amounts hidden. Tap the eye icon to reveal.',
-              child: const SizedBox.expand(),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

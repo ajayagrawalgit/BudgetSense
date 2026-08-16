@@ -10,6 +10,7 @@ import '../../../app/providers.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/theme_resolver.dart';
 import '../../../domain/services/import_service.dart';
+import '../../common/app_feedback.dart';
 import '../../common/calm_widgets.dart';
 import '../settings_controller.dart';
 import '../settings_state.dart';
@@ -110,7 +111,7 @@ class _PaisaImportScreenState extends ConsumerState<PaisaImportScreen> {
         if (!mounted) return;
         // Anything other than an explicit "yes" means: import the data only,
         // and leave the existing profile completely untouched.
-        importProfile = consent == true;
+        importProfile = consent;
       }
     }
 
@@ -189,42 +190,31 @@ class _PaisaImportScreenState extends ConsumerState<PaisaImportScreen> {
 
   /// Explicit, one-time confirmation before any personal/profile information is
   /// written. Returns true only if the user actively agrees.
-  Future<bool?> _confirmProfileImport(List<String> changes) {
-    return showDialog<bool>(
-      context: context,
+  Future<bool> _confirmProfileImport(List<String> changes) {
+    return context.confirm(
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Import profile details too?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'You already have a profile set up. Do you also want to bring '
-              'over the personal details from this backup?',
-            ),
-            const SizedBox(height: Insets.md),
-            for (final c in changes)
-              Padding(
-                padding: const EdgeInsets.only(bottom: Insets.xs),
-                child: Text('• $c'),
-              ),
-            const SizedBox(height: Insets.md),
-            Text(
-              'Your transactions, categories and accounts will be imported '
-              'either way, nothing is ever deleted or overwritten.',
-              style: Theme.of(ctx).textTheme.bodySmall,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('No, keep mine'),
+      title: 'Import profile details too?',
+      cancelLabel: 'No, keep mine',
+      confirmLabel: 'Yes, import profile',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'You already have a profile set up. Do you also want to bring '
+            'over the personal details from this backup?',
           ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Yes, import profile'),
+          const SizedBox(height: Insets.md),
+          for (final c in changes)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Insets.xs),
+              child: Text('• $c'),
+            ),
+          const SizedBox(height: Insets.md),
+          Text(
+            'Your transactions, categories and accounts will be imported '
+            'either way, nothing is ever deleted or overwritten.',
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),

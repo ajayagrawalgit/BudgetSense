@@ -40,7 +40,9 @@ void main() {
       });
     }
 
-    testWidgets('is a no-op under reduce motion', (tester) async {
+    testWidgets(
+        'still celebrates under reduce motion (easter eggs ignore '
+        'settings)', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           home: MediaQuery(
@@ -60,7 +62,13 @@ void main() {
       );
       await tester.tap(find.text('go'));
       await tester.pump();
-      // Nothing extra should have been inserted; no exception either.
+      await tester.pump(const Duration(milliseconds: 16));
+
+      // The celebration still plays even with reduce-motion on: this is a
+      // deliberate, explicit-gesture easter egg, not ambient motion.
+      expect(find.byType(CustomPaint), findsWidgets);
+
+      await tester.pumpAndSettle(const Duration(milliseconds: 16));
       expect(tester.takeException(), isNull);
     });
   });

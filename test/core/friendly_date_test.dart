@@ -64,6 +64,28 @@ void main() {
     });
   });
 
+  group('month names', () {
+    test('names every month from its 1-based number', () {
+      expect(FriendlyDate.monthName(1), 'January');
+      expect(FriendlyDate.monthName(8), 'August');
+      expect(FriendlyDate.monthName(12), 'December');
+    });
+
+    test('monthYear reads as a heading', () {
+      expect(FriendlyDate.monthYear(DateTime(2026, 8, 12)), 'August 2026');
+      // The day is irrelevant to a month heading.
+      expect(
+        FriendlyDate.monthYear(DateTime(2026, 8, 1)),
+        FriendlyDate.monthYear(DateTime(2026, 8, 31)),
+      );
+    });
+
+    test('an uninitialized locale falls back instead of throwing', () {
+      expect(() => FriendlyDate.monthName(3, locale: 'fr_FR'), returnsNormally);
+      expect(FriendlyDate.monthName(3, locale: 'fr_FR'), 'March');
+    });
+  });
+
   group('locale safety', () {
     test('an uninitialized locale falls back instead of throwing', () {
       // fr_FR date symbols are not loaded in a plain unit test, so the helper

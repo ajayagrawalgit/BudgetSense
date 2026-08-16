@@ -141,6 +141,12 @@ class Loans extends Table with _AuditColumns {
   DateTimeColumn get nextPaymentDate => dateTime().nullable()();
   IntColumn get totalPaidMinor => integer().withDefault(const Constant(0))();
 
+  /// Opt-in: list this loan's EMI alongside recurring payments (due and
+  /// Upcoming) instead of only on the Loans tab. Off by default so existing
+  /// loans keep behaving exactly as before.
+  BoolColumn get showInUpcoming =>
+      boolean().withDefault(const Constant(false))();
+
   TextColumn get notes => text().nullable()();
 
   @override

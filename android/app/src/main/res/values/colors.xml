@@ -31,4 +31,8 @@
 
     <!-- Adaptive launcher icon background (warm cream paper, sampled from art). -->
     <color name="ic_launcher_background">#F5EAD1</color>
+
+    <!-- Launch/splash field. Matches the app's own light background so the
+         handover from the splash to the first Flutter frame does not flash. -->
+    <color name="splash_background">#F3ECDE</color>
 </resources>

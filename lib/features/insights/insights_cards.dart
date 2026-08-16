@@ -9,18 +9,14 @@ import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/money.dart';
 import '../common/calm_widgets.dart';
 import '../settings/settings_controller.dart';
+import '../settings/settings_state.dart';
 
 /// Extra, deeper Insights cards (Section 14). Each is a small [ConsumerWidget]
 /// that reads the same providers the dashboard uses, so numbers never diverge.
 /// Kept in their own file so `insights_screen.dart` stays focused and short.
 
-String _fmt(WidgetRef ref, Money v) {
-  final s = ref.read(settingsControllerProvider).valueOrNull;
-  return v.format(
-    currencySymbol: s?.currencySymbol ?? '₹',
-    locale: s?.localeCode,
-  );
-}
+String _fmt(WidgetRef ref, Money v) =>
+    ref.read(settingsControllerProvider).valueOrNull.orDefaults.formatMoney(v);
 
 /// "This month at a glance": how many expenses, the average size, and the
 /// single biggest one. A quick gut-check before the detailed cards.

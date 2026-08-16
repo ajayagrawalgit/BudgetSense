@@ -13,6 +13,7 @@ import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/haptics.dart';
 import '../../data/cloud/cloud_constants.dart';
 import '../../domain/services/snapshot_service.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import 'cloud_backup_section.dart';
 
@@ -125,32 +126,18 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
   }
 
   Future<void> _restore() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Restore from a backup?'),
-        content: const Text(
-          'Restore is safe and additive:\n\n'
+    final confirmed = await context.confirm(
+      title: 'Restore from a backup?',
+      message: 'Restore is safe and additive:\n\n'
           '\u2022 Your existing records are never deleted or overwritten.\n'
           '\u2022 New records from the backup are added alongside them.\n'
           '\u2022 Records you already restored before are skipped, so restoring '
           'twice never duplicates them.\n'
           '\u2022 Your current settings are kept; a backed-up setting is only '
           'filled in where you have not set one yourself.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Restore'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Restore',
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     // Accept any file and detect the format from its content, so the user never
     // has to worry about extensions.

@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="budgetsense_logo.png" width="120" alt="BudgetSense" />
-</p>
-
 <h1 align="center">BudgetSense: Architecture</h1>
 
 <p align="center"><em>How the pieces fit together: layers, modules, data flow, and the database.</em></p>
@@ -18,8 +14,9 @@ The whole thing is one Flutter codebase for Android and iOS. It leans on a
 clean, layered setup: a pure logic core with no Flutter or database code in it,
 a data layer that owns storage, an app layer that wires everything up and
 handles routing, and a stack of screens on top. It's offline-first, so all the
-state sits in SQLite on the device. The storage is shaped loosely enough that
-cloud sync could be bolted on later without a rewrite.
+state sits in SQLite on the device. Optional Google Drive backup sits on top of
+that as an opt-in layer, uploading only an encrypted snapshot, so the offline
+path stays the default and works unchanged when cloud backup is off.
 
 ---
 
@@ -248,7 +245,7 @@ flowchart LR
 
 Money is always an INTEGER (minor units), never a float, so rounding can't bite
 you. Every record you own carries `id`, `createdAt`, `updatedAt`, `archivedAt`
-(the soft delete), and `syncStatus` (for the cloud sync that might come later).
+(the soft delete), and `syncStatus` (used by the optional cloud backup).
 Schema version 3 added `transactions.iconCodePoint`.
 
 ```mermaid
@@ -418,8 +415,8 @@ to rot:
    good is a separate, deliberate action.
 7. The icon library only ever grows. `kCategoryIcons` indices stay put so stored
    code points never break.
-8. Every row is sync-ready, carrying `createdAt`, `updatedAt`, `archivedAt`, and
-   `syncStatus`, so cloud sync won't need a painful migration later.
+8. Every row carries `createdAt`, `updatedAt`, `archivedAt`, and `syncStatus`,
+   which is what lets the snapshot and cloud backup work without a migration.
 
 ---
 

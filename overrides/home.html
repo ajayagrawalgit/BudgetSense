@@ -1,0 +1,36 @@
+{% extends "main.html" %}
+
+<!--
+  BudgetSense animated landing frame.
+  The moving parts (grain, ink filters, progress bar) live here.
+  All CONTENT lives in docs/index.md as markdown, injected via page.content,
+  so editing that markdown updates the landing page. Every other page stays a
+  normal doc-driven Material page.
+-->
+
+{% block container %}
+<div class="bs-home">
+
+  <!-- animated paper grain over the whole page -->
+  <div class="bs-grain" aria-hidden="true"></div>
+
+  <!-- hidden SVG filter: ink displacement for the brush look -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="bs-ink" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.018 0.03"
+          numOctaves="2" seed="7" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="4"
+          xChannelSelector="R" yChannelSelector="G" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- scroll progress bar -->
+  <div class="bs-progress" id="bs-progress"></div>
+
+  <!-- ============ everything below comes from docs/index.md ============ -->
+  {{ page.content }}
+
+</div>
+{% endblock %}

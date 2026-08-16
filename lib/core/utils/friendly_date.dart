@@ -38,6 +38,14 @@ abstract final class FriendlyDate {
     return _format(date, pattern, locale);
   }
 
+  /// The full name of month [month] (1 = January), e.g. "January".
+  static String monthName(int month, {String? locale}) =>
+      _format(DateTime(2000, month), 'MMMM', locale);
+
+  /// A month heading: "January 2026".
+  static String monthYear(DateTime date, {String? locale}) =>
+      _format(date, 'MMMM yyyy', locale);
+
   static String _format(DateTime date, String pattern, String? locale) {
     try {
       return DateFormat(pattern, locale).format(date);

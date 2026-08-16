@@ -11,15 +11,26 @@ class RecurrenceService {
   const RecurrenceService();
 
   /// Advance a payment's [RecurringPaymentEntity.nextDueDate] by one cycle.
+  ///
+  /// Anchored to [RecurringPaymentEntity.billingAnchorDay] so a short month
+  /// never permanently shifts the schedule: a SIP set for the 31st takes the
+  /// 28th in February and returns to the 31st in March.
   DateTime advance(RecurringPaymentEntity p) => nextOccurrence(
         p.nextDueDate,
         p.frequency,
         customIntervalDays: p.customIntervalDays,
+        anchorDay: p.billingAnchorDay,
       );
 
   /// Marks a payment as completed for its current due date. Returns the
   /// (optional) transaction to persist and the payment with its due date
   /// advanced to the next cycle. Honors [RecurringPaymentEntity.endDate].
+  ///
+  /// This is the ONLY place in the app that turns a recurring payment into a
+  /// real transaction, and it is only ever reached from an explicit user tap
+  /// on "Mark paid". Nothing in BudgetSense posts money on a timer, on launch,
+  /// or in the background. If you add a caller, it must be driven by a
+  /// deliberate user action. See docs/DESIGN.md "Nothing posts itself".
   ({TransactionEntity? transaction, RecurringPaymentEntity updated}) complete(
     RecurringPaymentEntity p, {
     required String newTransactionId,
@@ -86,7 +97,11 @@ class RecurrenceService {
 
     final next = loan.nextPaymentDate == null
         ? null
-        : nextOccurrence(loan.nextPaymentDate!, loan.frequency);
+        : nextOccurrence(
+            loan.nextPaymentDate!,
+            loan.frequency,
+            anchorDay: loan.billingAnchorDay,
+          );
 
     final txn = TransactionEntity(
       id: newTransactionId,
@@ -111,47 +126,41 @@ class RecurrenceService {
     );
   }
 
-  /// Auto-rolls a recurring payment forward to the present.
+  /// Advances a payment's schedule past every period that has already come
+  /// due, WITHOUT creating a single transaction.
   ///
-  /// This is what makes a yearly/monthly/weekly commitment "recreate itself":
-  /// for every period whose due date has already arrived (due today or earlier)
-  /// it posts that period's transaction and advances to the next cycle, so the
-  /// list only ever surfaces the current period's occurrence. Only payments
-  /// with [RecurringPaymentEntity.autoAddTransaction] participate; manual ones
-  /// are left untouched so the user can still "Mark paid" themselves.
+  /// This exists so a payment that was due while the app was closed still
+  /// shows a sensible "next due" date instead of being stuck in the past
+  /// forever. It deliberately posts no money: an unpaid period is simply a
+  /// period the user never marked paid, and BudgetSense does not invent
+  /// spending on the user's behalf.
   ///
-  /// Pure and idempotent: give it the same [now] twice and the second call does
-  /// nothing. [newId] mints a fresh id per posted transaction (kept out of the
-  /// domain layer). [maxCatchUp] caps how many missed periods we backfill in one
-  /// pass, so a long-dormant install can never spin forever.
-  ({List<TransactionEntity> transactions, RecurringPaymentEntity updated})
-      catchUp(
+  /// Pure and idempotent. [maxRoll] caps how many periods we skip in one pass
+  /// so a long-dormant install can never spin forever.
+  RecurringPaymentEntity rollScheduleForward(
     RecurringPaymentEntity payment, {
     required DateTime now,
-    required String Function() newId,
-    int maxCatchUp = 60,
+    int maxRoll = 600,
   }) {
     final today = DateTime(now.year, now.month, now.day);
-    final posted = <TransactionEntity>[];
     var current = payment;
     var guard = 0;
 
-    while (current.autoAddTransaction &&
-        !current.isArchived &&
+    while (!current.isArchived &&
         !current.nextDueDate.isAfter(today) &&
-        guard < maxCatchUp) {
-      final result = complete(
-        current,
-        newTransactionId: newId(),
-        paidAt: current.nextDueDate,
+        guard < maxRoll) {
+      final next = advance(current);
+      final ended = current.endDate != null && next.isAfter(current.endDate!);
+      current = current.copyWith(
+        nextDueDate: next,
+        updatedAt: now,
+        archivedAt: ended ? now : null,
       );
-      if (result.transaction != null) posted.add(result.transaction!);
-      current = result.updated;
       guard++;
       if (current.isArchived) break; // reached endDate
     }
 
-    return (transactions: posted, updated: current);
+    return current;
   }
 
   /// Payments due on/before today.

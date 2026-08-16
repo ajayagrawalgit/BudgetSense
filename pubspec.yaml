@@ -62,19 +62,31 @@ dependencies:
   http: ^1.2.0
   google_sign_in: ^7.0.0
   googleapis: ^13.2.0
-  package_info_plus: ^9.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
   build_runner: ^2.4.11
   drift_dev: ^2.18.0
-  mocktail: ^1.0.4
 
 flutter:
   uses-material-design: true
   assets:
-    - assets/branding/
+    # Only the derived brand marks the app actually draws are bundled. The
+    # hand-authored masters in assets/branding are build-time inputs (tens of
+    # megabytes) and are deliberately not shipped; run tool/brand_assets.py to
+    # regenerate the derived directory. The rest of the derived set (botanical,
+    # milestone, divider, underline) stays on disk as a design kit: add the path
+    # back here and to BrandAssets when a screen starts drawing one, rather than
+    # carrying the bytes in every install. See docs/branding.md.
+    - assets/branding/derived/budgetsense-logo-primary-on-light.png
+    - assets/branding/derived/budgetsense-logo-inverse-on-dark.png
+    - assets/branding/derived/budgetsense-enso-ring.png
+    - assets/branding/derived/budgetsense-seal-terracotta.png
+    - assets/branding/derived/budgetsense-waves.png
+    # Loaded at startup and registered with Flutter's licence registry so the
+    # OFL notice ships with the fonts, as that licence requires.
+    - assets/fonts/OFL.txt
   fonts:
     # Refined UI alternative to the system font.
     - family: ZenMaruGothic

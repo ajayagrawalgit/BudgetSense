@@ -97,8 +97,12 @@ void main() {
       final kv = InMemoryKeyValueStore();
       final secrets = InMemorySecretStore();
       final m = CloudSyncMetadataStore(kv: kv, secrets: secrets);
-      final key = await SnapshotEncryptionService()
-          .deriveNewKeyMaterial('correct horse', iterations: 1000);
+      final key = await SnapshotEncryptionService().deriveNewKeyMaterial(
+        'correct horse',
+        // The envelope format enforces a minimum iteration count so a hostile
+        // backup cannot downgrade the KDF, so tests use the real floor.
+        iterations: SnapshotEncryptionService.minAcceptedIterations,
+      );
       await m.writeKeyMaterial(key);
       final read = await m.readKeyMaterial();
       expect(read, isNotNull);

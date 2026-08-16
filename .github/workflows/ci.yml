@@ -113,7 +113,7 @@ jobs:
       # produces an UNSIGNED release APK, which is the honest, distributable-only
       # -after-signing state. Never debug-signed.
       - name: Build release APK
-        run: flutter build apk --release --build-name=0.1.0 --build-number=1
+        run: flutter build apk --release
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

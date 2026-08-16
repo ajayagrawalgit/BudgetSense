@@ -1,9 +1,9 @@
 # Backup and Restore Spec (BACKUP_RESTORE_SPEC.md)
 
 One snapshot system serves all four flows: manual local backup, manual local
-restore, (planned) automatic Google Drive backup, and (planned) manual restore
-from Google Drive. There is exactly one snapshot format and one restore engine;
-local and cloud never diverge.
+restore, automatic Google Drive backup, and manual restore from Google Drive.
+There is exactly one snapshot format and one restore engine, so local and cloud
+never diverge.
 
 ## Components (shipped)
 
@@ -61,9 +61,10 @@ See `RESTORE_CONFLICT_POLICY.md` for the exact per-record rules and
 - Any failure rolls back to the exact pre-restore state.
 - Corrupt/unsupported/foreign files cause zero mutations.
 
-## Planned (cloud stage)
+## Cloud stage
 
-Google Drive backup, client-side encryption, background sync, remote conflict
-handling, and the reconciliation UI are specified in
-`CLOUD_SYNC_ARCHITECTURE.md` and `GOOGLE_DRIVE_SETUP.md`. They reuse this exact
-engine: cloud restore is just `importBytes` on downloaded, decrypted bytes.
+Google Drive backup, client-side encryption, remote conflict handling, and the
+reconciliation UI are specified in `CLOUD_SYNC_ARCHITECTURE.md` and
+`GOOGLE_DRIVE_SETUP.md`. They reuse this exact engine: cloud restore is just
+`importBytes` on downloaded, decrypted bytes. OS-scheduled background upload is
+the one piece still unimplemented; sync runs in the foreground instead.

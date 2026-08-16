@@ -5,6 +5,7 @@ import '../../app/feature_providers.dart';
 import '../../app/providers.dart';
 import '../../core/constants/enums.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/validation/validators.dart';
 import '../../data/seed/default_data.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../domain/services/threshold_service.dart';
@@ -198,8 +199,7 @@ class _ThresholdFormState extends State<_ThresholdForm> {
                 TextFormField(
                   controller: _label,
                   decoration: const InputDecoration(labelText: 'Label'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) => Validators.name(v, field: 'Label'),
                 ),
                 const SizedBox(height: Insets.md),
                 DropdownButtonFormField<ThresholdType>(

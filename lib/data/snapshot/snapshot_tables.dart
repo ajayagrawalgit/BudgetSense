@@ -121,6 +121,7 @@ final Map<String, List<ColSpec>> kSnapshotColumns = <String, List<ColSpec>>{
     const ColSpec('nextPaymentDate', ColType.dateTime, nullable: true),
     const ColSpec('totalPaidMinor', ColType.integer),
     const ColSpec('notes', ColType.text, nullable: true),
+    const ColSpec('showInUpcoming', ColType.boolean),
   ],
   'customFields': <ColSpec>[
     ..._audit,
@@ -240,57 +241,6 @@ Future<bool> insertResolvedRow(
   return true;
 }
 
-/// Restores [rows] into [table] using insert-or-update (by primary key), inside
-/// whatever transaction the caller opened. Unknown table names are ignored by
-/// the caller; this asserts a known name.
-Future<int> insertSnapshotRows(
-  AppDatabase db,
-  String table,
-  List<Map<String, Object?>> rows,
-) async {
-  var n = 0;
-  for (final m in rows) {
-    switch (table) {
-      case 'categories':
-        await db.into(db.categories).insertOnConflictUpdate(_categories(m));
-      case 'accounts':
-        await db.into(db.accounts).insertOnConflictUpdate(_accounts(m));
-      case 'paymentMethods':
-        await db
-            .into(db.paymentMethods)
-            .insertOnConflictUpdate(_paymentMethods(m));
-      case 'transactions':
-        await db.into(db.transactions).insertOnConflictUpdate(_transactions(m));
-      case 'recurringPayments':
-        await db
-            .into(db.recurringPayments)
-            .insertOnConflictUpdate(_recurringPayments(m));
-      case 'loans':
-        await db.into(db.loans).insertOnConflictUpdate(_loans(m));
-      case 'customFields':
-        await db.into(db.customFields).insertOnConflictUpdate(_customFields(m));
-      case 'customFieldValues':
-        await db
-            .into(db.customFieldValues)
-            .insertOnConflictUpdate(_customFieldValues(m));
-      case 'thresholds':
-        await db.into(db.thresholds).insertOnConflictUpdate(_thresholds(m));
-      case 'notificationPreferences':
-        await db
-            .into(db.notificationPreferences)
-            .insertOnConflictUpdate(_notificationPreferences(m));
-      case 'exportRecords':
-        await db
-            .into(db.exportRecords)
-            .insertOnConflictUpdate(_exportRecords(m));
-      default:
-        return n; // unknown table: skip silently (handled/warned by caller)
-    }
-    n++;
-  }
-  return n;
-}
-
 // ---- Per-table tolerant companion builders ---------------------------------
 
 CategoriesCompanion _categories(Map<String, Object?> m) => CategoriesCompanion(
@@ -392,6 +342,7 @@ LoansCompanion _loans(Map<String, Object?> m) => LoansCompanion(
       nextPaymentDate: _dateN(m, 'nextPaymentDate'),
       totalPaidMinor: _int(m, 'totalPaidMinor'),
       notes: _strN(m, 'notes'),
+      showInUpcoming: _bool(m, 'showInUpcoming'),
     );
 
 CustomFieldsCompanion _customFields(Map<String, Object?> m) =>

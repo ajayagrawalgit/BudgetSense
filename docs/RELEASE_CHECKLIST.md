@@ -11,15 +11,29 @@ A reproducible, fail-closed Android release process. Do these in order.
   `android/key.properties` (+ .jks) OR as CI secrets. Copy
   `android/key.properties.example` to get started.
 
-## 1. Set the version (single source of truth: pubspec)
+## 1. Set the version
 
-```yaml
-# pubspec.yaml
-version: 0.1.0+1        # versionName 0.1.0, versionCode 1
+The public version name is written in two places, because `pubspec.yaml` has to
+carry a three-segment semver that Dart's parser accepts and the release is named
+`0.1`:
+
+```dart
+// lib/core/constants/app_info.dart
+static const String version = '0.1';
 ```
 
-Keep `lib/core/constants/app_info.dart` `version` equal to the pubspec version
-part. `scripts/release_preflight.sh` fails the release if they diverge.
+```kotlin
+// android/app/build.gradle.kts
+versionName = "0.1"
+```
+
+```yaml
+# pubspec.yaml -> supplies versionCode only
+version: 0.1.0+1
+```
+
+`scripts/release_preflight.sh` fails the release if the two version names
+diverge.
 
 ## 2. Run the full local quality gate
 
@@ -34,7 +48,7 @@ analyzer, tests with coverage, the coverage gate (>=70%, no critical file at
 ## 3. Release preflight
 
 ```bash
-./scripts/release_preflight.sh 0.1.0
+./scripts/release_preflight.sh 0.1
 ```
 
 Verifies version parity and that no signing material is tracked.
@@ -43,13 +57,17 @@ Verifies version parity and that no signing material is tracked.
 
 ```bash
 export JAVA_HOME=/path/to/jdk-21
+# Signing material lives outside the checkout; omit to get an unsigned APK.
+export BUDGETSENSE_KEYSTORE_PROPERTIES="$HOME/.config/budgetsense/key.properties"
 flutter clean
 flutter pub get
 dart run build_runner build --delete-conflicting-outputs
-flutter build apk --release --build-name=0.1.0 --build-number=1
+flutter build apk --release
 ```
 
-- With a valid `android/key.properties`, the APK is **signed** with your key.
+- Signing is read only from the properties file pointed at by the
+  `BUDGETSENSE_KEYSTORE_PROPERTIES` environment variable, which must live
+  outside the repository. The build fails if that path is inside the checkout.
 - Without it, the APK is left **unsigned** (never debug-signed).
 
 ## 5. Stage and checksum the artifact
@@ -74,11 +92,10 @@ BT=$ANDROID_HOME/build-tools/36.0.0
   grep -E "package:|application-label:|sdkVersion|targetSdkVersion|native-code"
 ```
 
-Confirm: package `com.budgetsense.budgetsense`, versionName `0.1.0`,
+Confirm: package `com.budgetsense.budgetsense`, versionName `0.1`,
 versionCode `1`, label `BudgetSense`, not debuggable, expected permissions.
-Note: the manifest now includes `INTERNET` (and `ACCESS_NETWORK_STATE`) for the
-optional Google Drive backup only; no network happens until the user opts in.
-Record results in `release-artifacts/BUILD_EVIDENCE.md`.
+The manifest includes `INTERNET` and `ACCESS_NETWORK_STATE` for the optional
+Google Drive backup. No cloud sync happens until the user opts in.
 
 ## Cloud backup release gate
 
@@ -91,12 +108,13 @@ has been validated.
 ## 7. Tag and publish (CI)
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1
+git push origin v0.1
 ```
 
-The `Release` workflow re-runs the full gate, verifies the tag matches pubspec,
-signs (if secrets present), builds, checksums, and publishes the GitHub Release
+The `Release` workflow re-runs the full gate, verifies the tag matches
+`AppInfo.version`, signs (if secrets present), builds, checksums, and publishes
+the GitHub Release
 with notes from `CHANGELOG.md`. It never releases from a dirty/mismatched
 version and never debug-signs.
 

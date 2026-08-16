@@ -1,8 +1,0 @@
-{
-  "versionCode": 2,
-  "versionName": "0.2.0",
-  "apkUrl": "https://github.com/YOUR_GH_USER/BudgetSense/releases/latest/download/BudgetSense-release.apk",
-  "sha256": "PUT_THE_APK_SHA256_HERE",
-  "notes": "Describe what changed in this version.",
-  "mandatory": false
-}

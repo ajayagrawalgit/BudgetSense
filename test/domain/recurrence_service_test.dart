@@ -77,6 +77,33 @@ void main() {
       final result = service.complete(p, newTransactionId: 't1');
       expect(result.updated.isArchived, isTrue);
     });
+
+    test('paidAt controls the recorded transaction date, not the due date', () {
+      // Paid early: three days before the scheduled due date.
+      final early = service.complete(
+        _payment(due: DateTime(2026, 7, 15)),
+        newTransactionId: 't1',
+        paidAt: DateTime(2026, 7, 12),
+      );
+      expect(early.transaction!.occurredAt, DateTime(2026, 7, 12));
+      // The schedule still advances from its own due date, not from paidAt.
+      expect(early.updated.nextDueDate, DateTime(2026, 8, 15));
+
+      // Paid late: cleared ten days after an overdue due date.
+      final late = service.complete(
+        _payment(due: DateTime(2026, 7, 15)),
+        newTransactionId: 't2',
+        paidAt: DateTime(2026, 7, 25),
+      );
+      expect(late.transaction!.occurredAt, DateTime(2026, 7, 25));
+      expect(late.updated.nextDueDate, DateTime(2026, 8, 15));
+
+      // No paidAt given (e.g. the automatic catch-up path) still falls back
+      // to the due date, exactly as before.
+      final fallback = service.complete(_payment(due: DateTime(2026, 7, 15)),
+          newTransactionId: 't3');
+      expect(fallback.transaction!.occurredAt, DateTime(2026, 7, 15));
+    });
   });
 
   group('RecurrenceService.payLoan', () {
@@ -127,48 +154,52 @@ void main() {
     });
   });
 
-  group('RecurrenceService.catchUp', () {
-    String Function() counter() {
-      var n = 0;
-      return () => 't${n++}';
-    }
-
-    test('posts every missed period and advances to the next cycle', () {
+  group('RecurrenceService.rollScheduleForward', () {
+    test('advances past every missed period WITHOUT posting any money', () {
       final p = _payment(due: DateTime(2026, 5, 15));
-      final result = service.catchUp(
+      final updated = service.rollScheduleForward(
         p,
         now: DateTime(2026, 7, 20),
-        newId: counter(),
       );
-      // May 15, Jun 15, Jul 15 are all due by Jul 20.
-      expect(result.transactions, hasLength(3));
-      expect(result.updated.nextDueDate, DateTime(2026, 8, 15));
+      // May 15, Jun 15, Jul 15 all came due, but the user never marked any of
+      // them paid, so no transaction may exist. Only the schedule moves.
+      expect(updated.nextDueDate, DateTime(2026, 8, 15));
     });
 
-    test('does nothing for manual (non auto-add) payments', () {
-      final p = _payment(autoAdd: false, due: DateTime(2026, 5, 15));
-      final result = service.catchUp(
-        p,
+    test('rolls manual and auto-add payments identically', () {
+      // autoAddTransaction only affects what "Mark paid" records. It must not
+      // grant anything permission to post on its own.
+      final manual = service.rollScheduleForward(
+        _payment(autoAdd: false, due: DateTime(2026, 5, 15)),
         now: DateTime(2026, 7, 20),
-        newId: counter(),
       );
-      expect(result.transactions, isEmpty);
-      expect(result.updated.nextDueDate, DateTime(2026, 5, 15));
-    });
-
-    test('is idempotent: a second pass on the same day posts nothing', () {
-      final first = service.catchUp(
+      final auto = service.rollScheduleForward(
         _payment(due: DateTime(2026, 5, 15)),
         now: DateTime(2026, 7, 20),
-        newId: counter(),
       );
-      final second = service.catchUp(
-        first.updated,
+      expect(manual.nextDueDate, auto.nextDueDate);
+      expect(manual.nextDueDate, DateTime(2026, 8, 15));
+    });
+
+    test('is idempotent: a second pass on the same day changes nothing', () {
+      final first = service.rollScheduleForward(
+        _payment(due: DateTime(2026, 5, 15)),
         now: DateTime(2026, 7, 20),
-        newId: counter(),
       );
-      expect(second.transactions, isEmpty);
-      expect(second.updated.nextDueDate, first.updated.nextDueDate);
+      final second = service.rollScheduleForward(
+        first,
+        now: DateTime(2026, 7, 20),
+      );
+      expect(second.nextDueDate, first.nextDueDate);
+    });
+
+    test('leaves a future-dated payment completely untouched', () {
+      final p = _payment(due: DateTime(2026, 9, 15));
+      final updated = service.rollScheduleForward(
+        p,
+        now: DateTime(2026, 7, 20),
+      );
+      expect(updated.nextDueDate, DateTime(2026, 9, 15));
     });
 
     test('stops and archives when it rolls past the end date', () {
@@ -176,12 +207,11 @@ void main() {
         due: DateTime(2026, 5, 15),
         end: DateTime(2026, 6, 20),
       );
-      final result = service.catchUp(
+      final updated = service.rollScheduleForward(
         p,
         now: DateTime(2026, 7, 20),
-        newId: counter(),
       );
-      expect(result.updated.isArchived, isTrue);
+      expect(updated.isArchived, isTrue);
     });
   });
 

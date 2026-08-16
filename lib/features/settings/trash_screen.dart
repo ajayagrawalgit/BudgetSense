@@ -7,7 +7,9 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/category_icons.dart';
 import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/friendly_date.dart';
+import '../../core/utils/money.dart';
 import '../../domain/entities/transaction_entity.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import 'settings_controller.dart';
 import '../../core/utils/haptics.dart';
@@ -23,7 +25,7 @@ class TrashScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(archivedTransactionsProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final locale = settings?.localeCode;
 
     return Scaffold(
@@ -67,6 +69,7 @@ class TrashScreen extends ConsumerWidget {
                   txn: t,
                   symbol: symbol,
                   locale: locale,
+                  compact: settings?.numberFormatCompact ?? false,
                   onRestore: () => _restore(context, ref, t),
                   onDeleteForever: () => _deleteForever(context, ref, t),
                 );
@@ -86,9 +89,7 @@ class TrashScreen extends ConsumerWidget {
     await ref.read(transactionRepositoryProvider).unarchive(t.id);
     Haptics.confirm();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text('Restored "${t.name}"')));
+    context.showMessage('Restored "${t.name}"');
   }
 
   Future<void> _deleteForever(
@@ -96,60 +97,32 @@ class TrashScreen extends ConsumerWidget {
     WidgetRef ref,
     TransactionEntity t,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete forever?'),
-        content: Text(
+    final confirmed = await context.confirm(
+      title: 'Delete forever?',
+      message:
           '"${t.name}" will be permanently removed. This cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete forever'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete forever',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref.read(transactionRepositoryProvider).delete(t.id);
     Haptics.impact();
   }
 
   Future<void> _emptyTrash(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Empty Trash?'),
-        content: const Text(
+    final confirmed = await context.confirm(
+      title: 'Empty Trash?',
+      message:
           'Every item in the Trash will be permanently deleted. This cannot be '
           'undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Empty Trash'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Empty Trash',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
     await ref.read(transactionRepositoryProvider).emptyTrash();
     Haptics.impact();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        const SnackBar(content: Text('Trash emptied. A clean slate.')),
-      );
+    context.showMessage('Trash emptied. A clean slate.');
   }
 }
 
@@ -177,6 +150,7 @@ class _TrashRow extends StatelessWidget {
     required this.txn,
     required this.symbol,
     required this.locale,
+    this.compact = false,
     required this.onRestore,
     required this.onDeleteForever,
   });
@@ -184,6 +158,7 @@ class _TrashRow extends StatelessWidget {
   final TransactionEntity txn;
   final String symbol;
   final String? locale;
+  final bool compact;
   final VoidCallback onRestore;
   final VoidCallback onDeleteForever;
 
@@ -231,7 +206,7 @@ class _TrashRow extends StatelessWidget {
             ),
           ),
           Text(
-            '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale)}',
+            '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale, compact: compact)}',
             style: text.titleSmall?.copyWith(color: amountColor),
           ),
           IconButton(

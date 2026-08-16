@@ -1,7 +1,7 @@
 # Contributing to BudgetSense
 
-Thanks for helping improve BudgetSense, a calm, offline-first personal finance
-journal. This guide keeps the codebase consistent and releasable.
+Thanks for helping improve BudgetSense, a calm, offline-first personal budgeting
+app. This guide keeps the codebase consistent and releasable.
 
 ## Prerequisites
 
@@ -56,7 +56,8 @@ python3 tool/coverage_report.py --threshold 70 # enforce coverage locally
 
 1. `./scripts/quality_gate.sh` passes.
 2. If you touched a public API, update all call sites, tests, and docs.
-3. Update `CHANGELOG.md` under "Unreleased".
+3. Add a note to `CHANGELOG.md` under an "Unreleased" heading, creating one
+   above the most recent release if it isn't there yet.
 4. Do not commit secrets, keystores, `key.properties`, or PII files.
 
 CI (fail-closed) will run format, analyze, generated-code drift, tests +

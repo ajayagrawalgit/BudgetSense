@@ -71,6 +71,27 @@ final previousMonthTransactionsProvider = StreamProvider((ref) {
   return repo.watchForMonth(inPrevMonth, calendar: calendar);
 });
 
+/// The most recently completed financial month, independent of which historic
+/// month the user is browsing. This powers the month-close reflection.
+final lastCompletedMonthTransactionsProvider = StreamProvider((ref) {
+  final repo = ref.watch(transactionRepositoryProvider);
+  final calendar = ref.watch(financialCalendarProvider);
+  final previous = calendar
+      .monthRangeFor(DateTime.now())
+      .start
+      .subtract(const Duration(days: 1));
+  return repo.watchForMonth(previous, calendar: calendar);
+});
+
+/// The completed month immediately before [lastCompletedMonthTransactionsProvider].
+final monthBeforeLastCompletedTransactionsProvider = StreamProvider((ref) {
+  final repo = ref.watch(transactionRepositoryProvider);
+  final calendar = ref.watch(financialCalendarProvider);
+  final lastStart = calendar.monthRangeFor(DateTime.now()).start;
+  final previous = lastStart.subtract(const Duration(days: 2));
+  return repo.watchForMonth(previous, calendar: calendar);
+});
+
 /// Live stream of soft-deleted transactions - powers the Trash can screen.
 final archivedTransactionsProvider = StreamProvider((ref) {
   return ref.watch(transactionRepositoryProvider).watchArchived();

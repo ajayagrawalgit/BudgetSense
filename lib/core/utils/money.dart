@@ -16,13 +16,33 @@ class Money implements Comparable<Money> {
   static const int _fractionDigits = 2;
   static const int _scale = 100; // 10 ^ _fractionDigits
 
+  /// Symbol used before the user picks one, and while settings are still
+  /// loading. Every call site falls back to this rather than repeating a
+  /// literal, so changing the shipped default is a one-line edit.
+  static const String defaultCurrencySymbol = '₹';
+
   static const Money zero = Money(0);
 
   /// Build from a major-unit decimal (e.g. 12.34 -> 1234 minor units).
+  ///
+  /// Rounds half-away-from-zero on the minor unit. Callers parsing user input
+  /// should reject sub-minor-unit precision up front (see [tryParse]) rather
+  /// than relying on this rounding, so the stored figure is always exactly
+  /// what the user typed.
   factory Money.fromMajor(num major) => Money((major * _scale).round());
 
+  /// True when [major] carries more precision than the currency can hold
+  /// (e.g. 10.999 for a 2-decimal currency).
+  static bool _hasSubMinorPrecision(num major) =>
+      ((major * _scale) - (major * _scale).roundToDouble()).abs() > 1e-9;
+
   /// Parse a user-entered string using the given [locale]'s number format.
-  /// Returns null when the input is not a valid non-negative number.
+  /// Returns null when the input is not a valid non-negative number, or when
+  /// it carries more decimal places than the currency actually has.
+  ///
+  /// Rejecting (rather than silently rounding) sub-minor-unit input matters:
+  /// quietly turning a typed "10.999" into 11.00 would record money the user
+  /// never entered, and every downstream total would inherit that invention.
   static Money? tryParse(String raw, {String? locale}) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return null;
@@ -35,6 +55,7 @@ class Money implements Comparable<Money> {
       final format = NumberFormat.decimalPattern(locale);
       final value = format.parse(cleaned);
       if (value.isNaN || value.isInfinite || value < 0) return null;
+      if (_hasSubMinorPrecision(value)) return null;
       return Money.fromMajor(value);
     } catch (_) {
       // Determine the decimal separator for this locale so we can normalize.
@@ -51,6 +72,7 @@ class Money implements Comparable<Money> {
       if (value == null || value.isNaN || value.isInfinite || value < 0) {
         return null;
       }
+      if (_hasSubMinorPrecision(value)) return null;
       return Money.fromMajor(value);
     }
   }
@@ -74,7 +96,18 @@ class Money implements Comparable<Money> {
   double percentOf(Money other) => ratioOf(other) * 100;
 
   /// Format for display with the configured [currencySymbol] and [locale].
-  String format({String currencySymbol = '₹', String? locale}) {
+  ///
+  /// When [compact] is true, delegates to [formatCompact] so tight UI spaces
+  /// show "12.3K" style numbers. Exports and imports must always keep the
+  /// default `compact: false` to preserve full precision.
+  String format({
+    String currencySymbol = defaultCurrencySymbol,
+    String? locale,
+    bool compact = false,
+  }) {
+    if (compact) {
+      return formatCompact(currencySymbol: currencySymbol, locale: locale);
+    }
     final format = NumberFormat.currency(
       locale: locale,
       symbol: currencySymbol,
@@ -84,7 +117,10 @@ class Money implements Comparable<Money> {
   }
 
   /// Compact form for tight spaces (e.g. 12.3K). Still currency-aware.
-  String formatCompact({String currencySymbol = '₹', String? locale}) {
+  String formatCompact({
+    String currencySymbol = defaultCurrencySymbol,
+    String? locale,
+  }) {
     final format = NumberFormat.compactCurrency(
       locale: locale,
       symbol: currencySymbol,

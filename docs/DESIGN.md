@@ -184,7 +184,7 @@ Colors: primary styles use `textPrimary`; `titleSmall`, `bodyMedium`,
 `isHandwritten` is true for everything except `system` and `zenMaru`. Handwritten
 faces have smaller x-heights, so `sizeFactor > 1.0` nudges sizes up via
 `TextTheme.apply(fontSizeFactor:)` to keep amounts legible. Picker preview line:
-`Coffee  ·  $4.50`.
+`Coffee  ·  ₹4.50`.
 
 ### Dynamic type
 
@@ -205,10 +205,8 @@ The app honors the OS font-size setting but clamps it to `[0.85, 1.4]` via
 | lg | 16 | Card padding, screen edge insets |
 | xl | 24 | Major section breaks |
 | xxl | 32 | Page-level / empty-state padding |
-| xxxl | 48 | Largest vertical margin |
 
-`Insets.screen` = `EdgeInsets.symmetric(horizontal: 16)`. `Insets.card` =
-`EdgeInsets.all(16)`.
+`Insets.card` = `EdgeInsets.all(16)`.
 
 ## Corner Radii (`Corners`)
 
@@ -365,7 +363,9 @@ amplitude control, and to the deprecated `vibrate(ms)` on API 24 to 25) tagged
 with `USAGE_TOUCH` on API 33+. Predefined effects (`EFFECT_TICK` etc.) were
 deliberately avoided because they are silent no-ops on many OEM devices. Durations
 scale with weight (selection 20ms, confirm 30ms, impact 45ms, warning is a short
-double-tap waveform). Because these are direct `Vibrator` calls, they are not
+double-tap waveform), raised further on manufacturers known to ship
+higher-threshold motors (Motorola, reported silent even at our normal tuning).
+Because these are direct `Vibrator` calls, they are not
 gated by the system touch-feedback toggle, so they fire on any device with a
 motor. Every other platform, and any channel failure, falls back to
 `HapticFeedback` (which is excellent on iOS via the Taptic engine).
@@ -525,9 +525,15 @@ included, stays inside the launcher-mask safe zone.
 
 ### In-app branding
 
-The transparent ensō mark (`assets/branding/budgetsense_mark.png`, via
-`kBrandMarkAsset`) carries the identity inside the app: it sits as the header on
-the About screen and the onboarding welcome page, quiet on the paper surface.
+The ensō mark carries the identity inside the app: it sits as the header on the
+About screen and the onboarding welcome page, quiet on the paper surface.
+
+The mark is two-colour (an ink ring plus a terracotta dot), so it ships as a
+light/dark pair and is chosen with `BrandMarks.of(context)` from
+`core/constants/branding.dart`, because espresso ink would be invisible on a dark
+surface. Single-colour brand decoratives ship instead as alpha masks and are
+tinted at draw time through `BrandMarks.tinted`, so one file serves every theme.
+See [Branding](branding.md).
 
 ---
 
@@ -583,10 +589,12 @@ quick-add sheet). See SPEC.md for the data bridge and layout details.
   custom-amount field (blank = the EMI), a date/time picker (defaults to now), a
   "Record EMI" button and an "Edit loan" link. Collapsed by default so the tab
   stays calm.
-- **"Mark paid"** (recurring) acts inline with a confirmation snackbar. Recurring
-  payments set to auto-add also roll themselves forward each period on launch, so
-  a monthly/weekly/yearly commitment "recreates itself" without any tap; the list
-  only shows the current period's occurrence.
+- **"Mark paid"** (recurring) acts inline with a confirmation snackbar, and is
+  the only thing that ever turns a commitment into a real transaction. Nothing
+  posts itself: a SIP, rent or subscription that came due while the app was
+  closed does not become an expense on next launch. Launch only rolls the
+  schedule forward so the due date is never stale, and the list shows the
+  current period's occurrence.
 - **Recording an EMI** (loan) writes a loan-payment transaction (custom or EMI
   amount, clamped to what is owed) and updates the outstanding balance inline.
 
@@ -608,9 +616,11 @@ quick-add sheet). See SPEC.md for the data bridge and layout details.
   (sectioned), or **XML**. A one-line hint describes each format; the file is
   handed to the native share sheet.
 - **Restore from file** accepts any file and **auto-detects** the format. A
-  confirm dialog warns that same-id records are overwritten and current settings
-  are replaced. On success it reapplies the launcher icon and shows a calm result
-  line (records restored, settings applied). Foreign files (e.g. Paisa) are
+  preview shows what will change before you confirm: nothing is ever
+  overwritten or deleted, new records are added, id collisions are appended as
+  new records, and settings are merged (existing values win unless unset). On
+  success it reapplies the launcher icon and shows a calm result line (records
+  inserted/skipped/remapped, settings applied). Foreign files (e.g. Paisa) are
   refused with a gentle message pointing to Settings > Import.
 
 ### Onboarding (5 pages, skippable)
@@ -618,7 +628,8 @@ quick-add sheet). See SPEC.md for the data bridge and layout details.
 2. Profile: required first name; optional nickname, age, phone, email.
 3. Money: currency symbol (max 4 chars, default the rupee symbol) and financial
    month start day (1 to 28).
-4. Cloud sync: a "coming soon" toggle (placeholder, disabled).
+4. Cloud backup: an explainer for the optional encrypted Google Drive backup,
+   with no control on the page. It is switched on later, in Settings.
 5. Defaults: toggle to seed starter categories and thresholds.
 
 "Maybe later" (top right) is always available; it still seeds default categories

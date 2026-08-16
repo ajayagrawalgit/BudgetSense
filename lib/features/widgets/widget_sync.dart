@@ -36,21 +36,6 @@ final _noSpendWindowProvider = StreamProvider.autoDispose((ref) {
   return repo.watchInRange(DateRange(start, end));
 });
 
-const _monthNames = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
 /// The soonest unpaid commitment across recurring payments and loans, or null
 /// when nothing is scheduled. Pure so it can be unit-tested. Overdue items sort
 /// first (their date is in the past), which is exactly what we want to surface.
@@ -208,7 +193,7 @@ final widgetPayloadProvider = Provider.autoDispose<Map<String, String>>((ref) {
   final loans = ref.watch(loansStreamProvider).valueOrNull ?? const [];
   final windowTxns = ref.watch(_noSpendWindowProvider).valueOrNull ?? const [];
 
-  final symbol = settings?.currencySymbol ?? '₹';
+  final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
   final locale = settings?.localeCode;
 
   final summary = summaryService.summarize(
@@ -249,7 +234,7 @@ final widgetPayloadProvider = Provider.autoDispose<Map<String, String>>((ref) {
       relativePercents([for (final c in topCats) c.amount.minorUnits]);
   final next = soonestDue(payments, loans);
   final stats = insights.expenseStats(txns);
-  final monthName = _monthNames[now.month - 1];
+  final monthName = FriendlyDate.monthName(now.month);
 
   // Spend-activity graph: count expense records per day, then shade light to
   // dark by how many records fell on that day.

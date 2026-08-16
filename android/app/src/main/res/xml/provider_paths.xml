@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- path_provider's getTemporaryDirectory() maps to the app cache dir on
-         Android, where the update APK is downloaded before install. -->
-    <cache-path name="update_cache" path="." />
-    <files-path name="update_files" path="." />
-    <external-cache-path name="update_external_cache" path="." />
-</paths>

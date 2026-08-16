@@ -7,19 +7,25 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing is driven by a gitignored `android/key.properties` file so no
-// secrets ever land in version control. When it is absent (e.g. a fresh clone
-// or CI without secrets) we fall back to debug signing so the project still
-// builds - the release APK is simply not distributable until a key is provided.
+// Production signing is supplied only from a path OUTSIDE this repository.
+// BUDGETSENSE_KEYSTORE_PROPERTIES must point to a 0600 properties file whose
+// storeFile is also outside the checkout. Missing configuration deliberately
+// creates an unsigned release artifact: never debug-sign a production variant.
 val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-val hasReleaseKeystore = keystorePropertiesFile.exists()
+val externalPropertiesPath = System.getenv("BUDGETSENSE_KEYSTORE_PROPERTIES")
+val keystorePropertiesFile = externalPropertiesPath?.let(::File)
+val hasReleaseKeystore = keystorePropertiesFile?.isFile == true
 if (hasReleaseKeystore) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile!!))
+    val configuredKeystore = File(keystoreProperties["storeFile"] as String)
+    val repositoryRoot = rootProject.projectDir.canonicalFile
+    check(!configuredKeystore.canonicalFile.path.startsWith(repositoryRoot.path + File.separator)) {
+        "Production keystore must be outside the repository."
+    }
 }
 
 android {
-namespace = "com.budgetsense.budgetsense"
+    namespace = "com.budgetsense.budgetsense"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -34,7 +40,11 @@ namespace = "com.budgetsense.budgetsense"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        // Spelled out rather than taken from `flutter.versionName` because
+        // pubspec.yaml must hold a three-segment semver ("0.1.0") while the
+        // public release is named "0.1". Kept in step with AppInfo.version by
+        // scripts/release_preflight.sh.
+        versionName = "0.1"
     }
 
     signingConfigs {

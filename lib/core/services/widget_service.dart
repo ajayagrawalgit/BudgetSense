@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../utils/app_log.dart';
+
 /// Bridges the Flutter app and the native Android home-screen widgets.
 ///
 /// Data flows one way for display (Flutter computes figures -> writes them to
@@ -26,8 +28,9 @@ class WidgetService {
     if (!_supported) return;
     try {
       await _channel.invokeMethod<void>('updateWidgets', data);
-    } catch (_) {
+    } catch (e, s) {
       // Widgets are a best-effort enhancement; never let them break the app.
+      AppLog.error('Home-screen widget update failed', error: e, stackTrace: s);
     }
   }
 

@@ -48,6 +48,7 @@ class _LoanEditorSheetState extends ConsumerState<LoanEditorSheet> {
   late Frequency _frequency;
   late DateTime _startDate;
   DateTime? _nextPaymentDate;
+  late bool _showInUpcoming;
   bool _saving = false;
 
   @override
@@ -70,6 +71,7 @@ class _LoanEditorSheetState extends ConsumerState<LoanEditorSheet> {
     _frequency = e?.frequency ?? Frequency.monthly;
     _startDate = e?.startDate ?? DateTime.now();
     _nextPaymentDate = e?.nextPaymentDate ?? _safeNextMonth(DateTime.now());
+    _showInUpcoming = e?.showInUpcoming ?? false;
   }
 
   static DateTime _safeNextMonth(DateTime from) {
@@ -128,6 +130,7 @@ class _LoanEditorSheetState extends ConsumerState<LoanEditorSheet> {
       frequency: _frequency,
       startDate: _startDate,
       nextPaymentDate: _nextPaymentDate,
+      showInUpcoming: _showInUpcoming,
       notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
       updatedAt: now,
     );
@@ -141,7 +144,7 @@ class _LoanEditorSheetState extends ConsumerState<LoanEditorSheet> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final loc = settings?.localeCode;
 
     return SafeArea(
@@ -224,6 +227,28 @@ class _LoanEditorSheetState extends ConsumerState<LoanEditorSheet> {
                       : 'Next payment '
                           '${FriendlyDate.short(_nextPaymentDate!, locale: loc)}',
                 ),
+              ),
+              const SizedBox(height: Insets.md),
+              // An EMI is a recurring commitment, so it can sit alongside rent
+              // and subscriptions. Opt-in, because plenty of people prefer the
+              // Loans tab to be the only place their debt is visible.
+              //
+              // Needs a next payment date to have anything to schedule, so the
+              // switch disables itself (and explains why) without one.
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Show EMI in upcoming payments'),
+                subtitle: Text(
+                  _nextPaymentDate == null
+                      ? 'Set a next payment date to schedule this EMI.'
+                      : 'Lists this EMI with your recurring payments. '
+                          'You still record it from here, and nothing is '
+                          'recorded until you do.',
+                ),
+                value: _showInUpcoming && _nextPaymentDate != null,
+                onChanged: _nextPaymentDate == null
+                    ? null
+                    : (v) => setState(() => _showInUpcoming = v),
               ),
               const SizedBox(height: Insets.md),
               TextFormField(

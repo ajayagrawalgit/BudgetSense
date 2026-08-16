@@ -6,6 +6,7 @@ import '../features/dashboard/dashboard_screen.dart';
 import '../features/expenses/expenses_screen.dart';
 import '../features/export/export_screen.dart';
 import '../features/insights/insights_screen.dart';
+import '../features/insights/month_close_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/payments/payments_screen.dart';
 import '../features/settings/settings_controller.dart';
@@ -63,6 +64,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/export',
         builder: (context, state) => const ExportScreen(),
+      ),
+      GoRoute(
+        path: '/month-close',
+        builder: (context, state) => const MonthCloseScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navShell) => AppShell(navShell: navShell),

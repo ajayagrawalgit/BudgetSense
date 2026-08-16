@@ -1,4 +1,5 @@
 import 'package:budgetsense/core/theme/app_fonts.dart';
+import 'package:budgetsense/core/utils/money.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -42,6 +43,15 @@ void main() {
           .whereType<String>()
           .toList();
       expect(families.toSet().length, families.length);
+    });
+
+    test('the preview shows a real amount in the app currency symbol', () {
+      for (final f in FontChoice.values) {
+        expect(f.sample, 'Chai  \u00b7  \u20b912');
+        // The symbol, not the word, and not a bare ASCII 'Rs'.
+        expect(f.sample, contains(Money.defaultCurrencySymbol));
+        expect(f.sample.toLowerCase(), isNot(contains('rupee')));
+      }
     });
   });
 }

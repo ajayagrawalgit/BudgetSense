@@ -14,11 +14,6 @@ extension AppThemeVariantX on AppThemeVariant {
         AppThemeVariant.amoled => 'AMOLED',
         AppThemeVariant.glass => 'Transparent glass',
       };
-
-  bool get isDarkish =>
-      this == AppThemeVariant.dark ||
-      this == AppThemeVariant.amoled ||
-      this == AppThemeVariant.glass;
 }
 
 /// A calm, Muji-inspired accent. Muted and earthy by design - no neon.
@@ -240,4 +235,54 @@ class AppColors extends ThemeExtension<AppColors> {
       usesBlur: t < 0.5 ? usesBlur : other.usesBlur,
     );
   }
+
+  // Value equality is not cosmetic here, it is a performance contract.
+  //
+  // [ThemeData] compares its extensions to decide whether a theme actually
+  // changed. Without these, every rebuild produced a palette that looked
+  // identical but compared unequal, so `MaterialApp` believed the theme was
+  // new and ran a full `ThemeData.lerp` for the whole animation window. That
+  // lerp interpolates font sizes, which forces every piece of text in the app
+  // to re-layout on every frame. That was the stutter.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is AppColors &&
+        other.background == background &&
+        other.surface == surface &&
+        other.surfaceMuted == surfaceMuted &&
+        other.border == border &&
+        other.textPrimary == textPrimary &&
+        other.textSecondary == textSecondary &&
+        other.textFaint == textFaint &&
+        other.accent == accent &&
+        other.onAccent == onAccent &&
+        other.positive == positive &&
+        other.negative == negative &&
+        other.warning == warning &&
+        other.critical == critical &&
+        other.info == info &&
+        other.glassTint == glassTint &&
+        other.usesBlur == usesBlur;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        background,
+        surface,
+        surfaceMuted,
+        border,
+        textPrimary,
+        textSecondary,
+        textFaint,
+        accent,
+        onAccent,
+        positive,
+        negative,
+        warning,
+        critical,
+        info,
+        glassTint,
+        usesBlur,
+      );
 }

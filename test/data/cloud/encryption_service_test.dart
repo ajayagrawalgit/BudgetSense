@@ -7,8 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Encryption / integrity tests (Phase 3/13). Real AES-256-GCM + PBKDF2.
 void main() {
-  // Fewer iterations keep tests fast; production uses the default 210k.
-  const iters = 1000;
+  // The lowest iteration count the envelope format accepts. Tests used to run
+  // at 1000 for speed, but the parser now enforces a floor so a hostile backup
+  // cannot downgrade the KDF, and the write path matches it. The real floor is
+  // fast enough here (the whole file runs in a few seconds), so the tests
+  // exercise the same bounds production does rather than a weakened value.
+  const iters = SnapshotEncryptionService.minAcceptedIterations;
   final svc = SnapshotEncryptionService();
   final payload =
       Uint8List.fromList(utf8.encode('{"secret":"₹ Café expenses"}'));

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 
 import '../../core/theme/app_spacing.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import 'settings_controller.dart';
 
@@ -96,8 +97,6 @@ class SecurityScreen extends ConsumerWidget {
   }
 
   void _snack(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    context.showMessage(message);
   }
 }

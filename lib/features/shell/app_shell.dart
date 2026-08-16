@@ -36,11 +36,31 @@ class _AppShellState extends State<AppShell>
     duration: Motion.base,
     value: 1,
   );
-  // +1 when moving to a later section (slide in from the right), -1 for earlier.
-  double _direction = 0;
+
+  /// Driven animations rather than per-frame maths inside a builder. [Opacity]
+  /// and [Transform] accept an [Animation] and repaint without rebuilding the
+  /// subtree beneath them. Here that subtree is the whole five-section
+  /// [IndexedStack], so keeping it out of the animation loop is the difference
+  /// between a smooth section change and a visible hitch.
+  late final CurvedAnimation _eased = CurvedAnimation(
+    parent: _transition,
+    curve: Curves.easeOutCubic,
+  );
+
+  /// Never fades to nothing: the section stays legible throughout, so the move
+  /// reads as a shift of attention rather than a blink.
+  late final Animation<double> _fade =
+      _eased.drive(Tween<double>(begin: 0.35, end: 1));
+
+  /// Rebuilt on each direction change; the slide always lands on zero offset.
+  late Animation<Offset> _slide = _flat;
+
+  static const Animation<Offset> _flat =
+      AlwaysStoppedAnimation<Offset>(Offset.zero);
 
   @override
   void dispose() {
+    _eased.dispose();
     _transition.dispose();
     super.dispose();
   }
@@ -50,14 +70,21 @@ class _AppShellState extends State<AppShell>
     super.didUpdateWidget(old);
     final prev = old.navShell.currentIndex;
     final now = widget.navShell.currentIndex;
-    if (prev != now) {
-      _direction = now > prev ? 1 : -1;
-      if (context.reduceMotion) {
-        _transition.value = 1;
-      } else {
-        _transition.forward(from: 0);
-      }
+    if (prev == now) return;
+
+    if (context.reduceMotion) {
+      _slide = _flat;
+      _transition.value = 1;
+      return;
     }
+    // Later sections slide in from the right, earlier ones from the left.
+    // Measured in logical pixels via a fixed offset on the child, not a
+    // fraction of its size, so the travel stays identical on every screen.
+    final from = now > prev ? 26.0 : -26.0;
+    _slide = _eased.drive(
+      Tween<Offset>(begin: Offset(from, 0), end: Offset.zero),
+    );
+    _transition.forward(from: 0);
   }
 
   void _go(int index) {
@@ -98,19 +125,19 @@ class _AppShellState extends State<AppShell>
               _go(i - 1);
             }
           },
-          child: AnimatedBuilder(
-            animation: _transition,
-            child: navShell,
-            builder: (context, child) {
-              final t = Curves.easeOutCubic.transform(_transition.value);
-              return Opacity(
-                opacity: 0.35 + 0.65 * t,
-                child: Transform.translate(
-                  offset: Offset(_direction * 26 * (1 - t), 0),
-                  child: child,
-                ),
-              );
-            },
+          child: FadeTransition(
+            opacity: _fade,
+            child: AnimatedBuilder(
+              animation: _slide,
+              // Rasterise the section once and then merely composite it while
+              // it fades and slides. Without this every frame of the
+              // transition repaints five screens' worth of content.
+              child: RepaintBoundary(child: navShell),
+              builder: (context, child) => Transform.translate(
+                offset: _slide.value,
+                child: child,
+              ),
+            ),
           ),
         ),
         bottomNavigationBar: _CalmBottomBar(

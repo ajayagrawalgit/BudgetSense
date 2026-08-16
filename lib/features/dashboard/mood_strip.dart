@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../../domain/services/threshold_service.dart';
 import '../common/brand_watermark.dart';
 import '../common/calm_widgets.dart';
 import '../common/confetti_overlay.dart';
+import '../common/feedback_widgets.dart';
 
 // ---------------------------------------------------------------------------
 // Pure helpers (unit-tested). These decide the "vibe" from real numbers so the
@@ -142,7 +144,10 @@ class MoodStrip extends ConsumerWidget {
                       style: text.bodyMedium,
                     ),
                     const SizedBox(height: Insets.md),
-                    _WeatherRow(weather: weather),
+                    _WeatherRow(
+                      weather: weather,
+                      glowing: clean > kFireflyCleanDays,
+                    ),
                     const SizedBox(height: Insets.md),
                     _SprigRow(cleanDays: clean),
                   ],
@@ -168,10 +173,16 @@ class MoodStrip extends ConsumerWidget {
       };
 }
 
+/// Past [kFireflyCleanDays] no-spend days the sprig and the weather glyph pick
+/// up a firefly glow. Six leaves is all the stem can hold, so beyond that the
+/// only way left to show the streak still growing is to let it give off light.
+const int kFireflyCleanDays = 7;
+
 class _WeatherRow extends StatelessWidget {
-  const _WeatherRow({required this.weather});
+  const _WeatherRow({required this.weather, this.glowing = false});
 
   final WalletWeather weather;
+  final bool glowing;
 
   @override
   Widget build(BuildContext context) {
@@ -181,12 +192,19 @@ class _WeatherRow extends StatelessWidget {
         SizedBox(
           width: 34,
           height: 30,
-          child: CustomPaint(
-            painter: _WeatherPainter(
-              weather: weather,
-              ink: context.colors.textSecondary,
-              accent: context.colors.accent,
-              sun: context.colors.warning,
+          child: FireflyPulse(
+            enabled: glowing,
+            // Offset from the sprig's own cycle: two fireflies in one card
+            // breathing in step would look mechanical.
+            period: const Duration(milliseconds: 4200),
+            builder: (context, clock) => CustomPaint(
+              painter: _WeatherPainter(
+                weather: weather,
+                ink: context.colors.textSecondary,
+                accent: context.colors.accent,
+                sun: context.colors.warning,
+                pulse: clock,
+              ),
             ),
           ),
         ),
@@ -217,12 +235,16 @@ class _SprigRow extends StatelessWidget {
         SizedBox(
           width: 34,
           height: 34,
-          child: CustomPaint(
-            painter: _SprigPainter(
-              leaves: cleanDays,
-              ink: context.colors.textSecondary,
-              leaf: context.colors.positive,
-              dot: context.colors.accent,
+          child: FireflyPulse(
+            enabled: cleanDays > kFireflyCleanDays,
+            builder: (context, clock) => CustomPaint(
+              painter: _SprigPainter(
+                leaves: cleanDays,
+                ink: context.colors.textSecondary,
+                leaf: context.colors.positive,
+                dot: context.colors.accent,
+                pulse: clock,
+              ),
             ),
           ),
         ),
@@ -249,7 +271,9 @@ class _SprigRow extends StatelessWidget {
 ///
 /// A quiet easter egg: long-press it and the app brushes one complete ensō for
 /// you (the ring blooms to full, then eases back to where you actually are).
-/// Still under reduce-motion, it just gives a soft haptic.
+/// Deliberately NOT gated behind reduce-motion: it only fires from an explicit
+/// long-press, never ambient motion, and it is the whole point of the gesture.
+/// Easter eggs should behave the same regardless of settings.
 class EnsoMoodRing extends StatefulWidget {
   const EnsoMoodRing({
     required this.progress,
@@ -268,9 +292,31 @@ class EnsoMoodRing extends StatefulWidget {
   State<EnsoMoodRing> createState() => _EnsoMoodRingState();
 }
 
+/// How long the ring takes to travel to a new value.
+const Duration kEnsoRingStroke = Duration(milliseconds: 950);
+
+/// How long a fully brushed circle is held before it eases back.
+const Duration kEnsoBloomDwell = Duration(milliseconds: 250);
+
+/// How long the ring should take to reach a new value.
+///
+/// Ambient changes honour reduce-motion, but the long-press bloom does not:
+/// it is an explicit gesture and the stroke is the entire payoff, so removing
+/// it would leave the gesture doing nothing visible at all.
+Duration ensoRingDuration({
+  required bool reduceMotion,
+  required bool bloomPlaying,
+}) =>
+    (bloomPlaying || !reduceMotion) ? kEnsoRingStroke : Duration.zero;
+
 class _EnsoMoodRingState extends State<EnsoMoodRing> {
   late double _shown = widget.progress.clamp(0.0, 1.0);
   bool _blooming = false;
+
+  /// Held so a bloom in flight can be cancelled outright when the ring goes
+  /// away, rather than left pending and relying on a mounted check.
+  Timer? _easeBack;
+  Timer? _finish;
 
   @override
   void didUpdateWidget(EnsoMoodRing old) {
@@ -280,20 +326,29 @@ class _EnsoMoodRingState extends State<EnsoMoodRing> {
     }
   }
 
-  Future<void> _bloom() async {
+  @override
+  void dispose() {
+    _easeBack?.cancel();
+    _finish?.cancel();
+    super.dispose();
+  }
+
+  void _bloom() {
     if (_blooming) return;
     Haptics.selection();
-    final reduceMotion = context.reduceMotion;
-    if (reduceMotion) return;
     setState(() {
       _blooming = true;
       _shown = 1.0;
     });
-    await Future<void>.delayed(const Duration(milliseconds: 1150));
-    if (!mounted) return;
-    setState(() {
-      _shown = widget.progress.clamp(0.0, 1.0);
-      _blooming = false;
+    _easeBack = Timer(kEnsoRingStroke + kEnsoBloomDwell, () {
+      if (!mounted) return;
+      // Stay marked as blooming through the return leg, so easing back is
+      // animated too rather than snapping under reduce-motion.
+      setState(() => _shown = widget.progress.clamp(0.0, 1.0));
+      _finish = Timer(kEnsoRingStroke, () {
+        if (!mounted) return;
+        setState(() => _blooming = false);
+      });
     });
   }
 
@@ -308,6 +363,10 @@ class _EnsoMoodRingState extends State<EnsoMoodRing> {
           'Saving progress ${(widget.progress * 100).round()} percent of target',
       child: GestureDetector(
         onLongPress: _bloom,
+        // Claim the whole square. The ring is painted, so without this the
+        // corners and the hole in the middle are not hit-testable and the
+        // long-press only lands if you happen to find the stroke.
+        behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: widget.size,
           height: widget.size,
@@ -316,9 +375,10 @@ class _EnsoMoodRingState extends State<EnsoMoodRing> {
             children: [
               TweenAnimationBuilder<double>(
                 tween: Tween(begin: 0, end: _shown),
-                duration: reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 950),
+                duration: ensoRingDuration(
+                  reduceMotion: reduceMotion,
+                  bloomPlaying: _blooming,
+                ),
                 curve: Curves.easeOutCubic,
                 builder: (context, value, _) => CustomPaint(
                   size: Size.square(widget.size),
@@ -459,6 +519,7 @@ class _SprigPainter extends CustomPainter {
     required this.ink,
     required this.leaf,
     required this.dot,
+    this.pulse,
   });
 
   /// How many clean days to show as leaves (capped visually).
@@ -466,6 +527,9 @@ class _SprigPainter extends CustomPainter {
   final Color ink;
   final Color leaf;
   final Color dot;
+
+  /// The firefly clock, or null when the leaves should sit still and dark.
+  final double? pulse;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -498,11 +562,32 @@ class _SprigPainter extends CustomPainter {
       final left = i.isEven;
       final tipX = on.dx + (left ? -w * 0.30 : w * 0.30);
       final tipY = on.dy - h * 0.06;
+      final tip = Offset(tipX, tipY);
+      final bulge = w * 0.10;
+
+      // The glow is a blurred copy of the leaf sitting under it, so the light
+      // takes the leaf's own shape instead of haloing a circle around it. Each
+      // leaf runs on its own phase, the way a cluster of fireflies does.
+      final clock = pulse;
+      if (clock != null) {
+        final g = fireflyGlow(clock, phase: i * 0.17);
+        paintInkLeaf(
+          canvas,
+          base: on,
+          tip: tip,
+          bulge: bulge * 1.5,
+          paint: Paint()
+            ..style = PaintingStyle.fill
+            ..color = leaf.withValues(alpha: 0.10 + 0.30 * g)
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, 1.6 + 2.2 * g),
+        );
+      }
+
       paintInkLeaf(
         canvas,
         base: on,
-        tip: Offset(tipX, tipY),
-        bulge: w * 0.10,
+        tip: tip,
+        bulge: bulge,
         paint: leafPaint,
       );
     }
@@ -522,7 +607,8 @@ class _SprigPainter extends CustomPainter {
       old.leaves != leaves ||
       old.ink != ink ||
       old.leaf != leaf ||
-      old.dot != dot;
+      old.dot != dot ||
+      old.pulse != pulse;
 }
 
 // ---------------------------------------------------------------------------
@@ -535,12 +621,16 @@ class _WeatherPainter extends CustomPainter {
     required this.ink,
     required this.accent,
     required this.sun,
+    this.pulse,
   });
 
   final WalletWeather weather;
   final Color ink;
   final Color accent;
   final Color sun;
+
+  /// The firefly clock, or null when the glyph should sit still and dark.
+  final double? pulse;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -556,6 +646,46 @@ class _WeatherPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..color = sun;
 
+    // Lay a blurred copy of the same glyph down first and the light appears to
+    // come off the drawing itself rather than sitting behind it as a disc.
+    final clock = pulse;
+    if (clock != null) {
+      final g = fireflyGlow(clock, phase: 0.42);
+      final blur = MaskFilter.blur(BlurStyle.normal, 2.0 + 2.6 * g);
+      _glyph(
+        canvas,
+        size,
+        stroke: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..color = ink.withValues(alpha: 0.10 + 0.28 * g)
+          ..maskFilter = blur,
+        sunPaint: Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.6
+          ..strokeCap = StrokeCap.round
+          ..color = sun.withValues(alpha: 0.14 + 0.38 * g)
+          ..maskFilter = blur,
+        rain: accent.withValues(alpha: 0.12 + 0.30 * g),
+        rainBlur: blur,
+      );
+    }
+
+    _glyph(canvas, size, stroke: stroke, sunPaint: sunPaint, rain: accent);
+  }
+
+  /// The glyph for [weather], drawn with whatever paints it is handed, so the
+  /// glow pass and the ink pass can never drift out of shape.
+  void _glyph(
+    Canvas canvas,
+    Size size, {
+    required Paint stroke,
+    required Paint sunPaint,
+    required Color rain,
+    MaskFilter? rainBlur,
+  }) {
     switch (weather) {
       case WalletWeather.sunny:
         _sun(canvas, size, sunPaint, full: true);
@@ -566,7 +696,7 @@ class _WeatherPainter extends CustomPainter {
         _cloud(canvas, size, stroke, small: false);
       case WalletWeather.drizzle:
         _cloud(canvas, size, stroke, small: false);
-        _rain(canvas, size, accent);
+        _rain(canvas, size, rain, blur: rainBlur);
     }
   }
 
@@ -610,11 +740,12 @@ class _WeatherPainter extends CustomPainter {
     c.drawPath(path, p);
   }
 
-  void _rain(Canvas c, Size s, Color color) {
+  void _rain(Canvas c, Size s, Color color, {MaskFilter? blur}) {
     final p = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
+      ..strokeWidth = blur == null ? 1.6 : 2.6
       ..strokeCap = StrokeCap.round
+      ..maskFilter = blur
       ..color = color;
     final y = s.height * 0.74;
     for (var i = 0; i < 3; i++) {

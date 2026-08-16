@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_spacing.dart';
+import '../common/app_feedback.dart';
 import 'settings_controller.dart';
 
 /// Edit the user profile captured during onboarding. Only the name is
@@ -55,9 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved. Looking good.')),
-    );
+    context.showMessage('Profile saved. Looking good.');
     Navigator.of(context).pop();
   }
 

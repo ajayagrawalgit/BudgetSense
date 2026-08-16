@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/enums.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/theme_resolver.dart';
+import '../../core/utils/friendly_date.dart';
 import '../../core/utils/money.dart';
 import '../../domain/entities/transaction_entity.dart';
 
@@ -16,6 +17,7 @@ class MonthCalendar extends StatefulWidget {
     required this.transactions,
     required this.currencySymbol,
     this.locale,
+    this.compact = false,
     super.key,
   });
 
@@ -23,6 +25,7 @@ class MonthCalendar extends StatefulWidget {
   final List<TransactionEntity> transactions;
   final String currencySymbol;
   final String? locale;
+  final bool compact;
 
   @override
   State<MonthCalendar> createState() => _MonthCalendarState();
@@ -32,21 +35,6 @@ class _MonthCalendarState extends State<MonthCalendar> {
   int? _selectedDay;
 
   static const _weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  static const _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   @override
   void didUpdateWidget(MonthCalendar old) {
     super.didUpdateWidget(old);
@@ -151,10 +139,11 @@ class _MonthCalendarState extends State<MonthCalendar> {
           if (_selectedDay != null) ...[
             const Divider(height: Insets.lg),
             _DaySummary(
-              label: '${_monthNames[month - 1]} $_selectedDay',
+              label: '${FriendlyDate.monthName(month)} $_selectedDay',
               info: byDay[_selectedDay],
               currencySymbol: widget.currencySymbol,
               locale: widget.locale,
+              compact: widget.compact,
             ),
           ],
         ],
@@ -233,12 +222,14 @@ class _DaySummary extends StatelessWidget {
     required this.info,
     required this.currencySymbol,
     required this.locale,
+    this.compact = false,
   });
 
   final String label;
   final ({int count, int net})? info;
   final String currencySymbol;
   final String? locale;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -269,7 +260,7 @@ class _DaySummary extends StatelessWidget {
         const Spacer(),
         Text(
           '${positive ? '+' : '-'}'
-          '${net.format(currencySymbol: currencySymbol, locale: locale)}',
+          '${net.format(currencySymbol: currencySymbol, locale: locale, compact: compact)}',
           style: text.titleSmall?.copyWith(
             color: positive ? colors.positive : colors.negative,
           ),

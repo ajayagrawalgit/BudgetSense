@@ -15,4 +15,11 @@ are redistributable with the app. Sourced from the Google Fonts project
 The system default (San Francisco on iOS, Roboto on Android) is offered as the
 first, non-bundled option in Settings → Typeface.
 
-Full OFL text: https://openfontlicense.org
+`OFL.txt` in this folder holds the licence text and the per-family copyright
+notices taken from the font files. It is bundled as an app asset and registered
+with Flutter's licence registry at startup (see `lib/main.dart`), so the notice
+is reachable in the app under Settings → About → Open source licences. The OFL
+requires that notice to be distributed with the fonts, so please keep the asset
+entry in `pubspec.yaml` if you add or swap a typeface.
+
+Full OFL text and FAQ: https://openfontlicense.org

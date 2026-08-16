@@ -72,6 +72,8 @@ class _PaymentEditorSheetState extends ConsumerState<PaymentEditorSheet> {
     _endDate = e?.endDate;
     _categoryId = e?.categoryId;
     _accountId = e?.accountId;
+    // Default ON: when the user marks this paid, record it as a real expense.
+    // This only ever fires from an explicit "Mark paid" tap, never on a timer.
     _autoAdd = e?.autoAddTransaction ?? true;
     _reminder = e?.reminderEnabled ?? true;
     _reminderDays = e?.reminderDaysBefore ?? 1;
@@ -152,7 +154,7 @@ class _PaymentEditorSheetState extends ConsumerState<PaymentEditorSheet> {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final cats = ref.watch(categoriesStreamProvider).valueOrNull ?? const [];
     final accounts = ref.watch(accountsStreamProvider).valueOrNull ?? const [];
 
@@ -274,7 +276,10 @@ class _PaymentEditorSheetState extends ConsumerState<PaymentEditorSheet> {
               const SizedBox(height: Insets.sm),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Auto-add to transactions when completed'),
+                title: const Text('Record an expense when I mark it paid'),
+                subtitle: const Text(
+                  'Nothing is recorded until you mark this paid yourself.',
+                ),
                 value: _autoAdd,
                 onChanged: (v) => setState(() => _autoAdd = v),
               ),

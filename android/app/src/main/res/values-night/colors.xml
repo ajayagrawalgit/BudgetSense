@@ -13,6 +13,10 @@
     <color name="widget_positive">#8AA585</color>
     <color name="widget_negative">#C08379</color>
     <color name="widget_on_accent">#1E1D1A</color>
+    <!-- Matches the app's dark background, for a flash-free handover into the
+         first Flutter frame. The night splash_mark is the cream ensō. -->
+    <color name="splash_background">#23221F</color>
+
     <!-- Note: ic_launcher_background is intentionally NOT overridden here. The
          foreground ink is dark, so a dark icon background would render the mark
          invisible. The launcher icon stays cream in both light and dark. -->

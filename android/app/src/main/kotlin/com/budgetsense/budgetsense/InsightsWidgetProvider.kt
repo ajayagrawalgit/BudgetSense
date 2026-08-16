@@ -1,9 +1,7 @@
 package com.budgetsense.budgetsense
 
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProvider
 import android.content.Context
-import android.os.Bundle
 import android.view.View
 import android.widget.RemoteViews
 
@@ -12,26 +10,9 @@ import android.widget.RemoteViews
  * savings rate, invested rate, average daily spend and projected balance when
  * the user makes it taller.
  */
-class InsightsWidgetProvider : AppWidgetProvider() {
+class InsightsWidgetProvider : ResizableWidgetProvider() {
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray,
-    ) {
-        for (id in appWidgetIds) render(context, appWidgetManager, id)
-    }
-
-    override fun onAppWidgetOptionsChanged(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetId: Int,
-        newOptions: Bundle,
-    ) {
-        render(context, appWidgetManager, appWidgetId)
-    }
-
-    private fun render(context: Context, manager: AppWidgetManager, id: Int) {
+    override fun render(context: Context, manager: AppWidgetManager, id: Int) {
         val views = RemoteViews(context.packageName, R.layout.widget_insights)
 
         views.setTextViewText(
@@ -57,11 +38,9 @@ class InsightsWidgetProvider : AppWidgetProvider() {
             WidgetSupport.value(context, "projectedBalance"),
         )
 
-        val options = manager.getAppWidgetOptions(id)
-        val minHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0)
         views.setViewVisibility(
             R.id.section_more,
-            if (minHeight >= 170) View.VISIBLE else View.GONE,
+            if (minHeightDp(manager, id) >= 170) View.VISIBLE else View.GONE,
         )
 
         views.setOnClickPendingIntent(

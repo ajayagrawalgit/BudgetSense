@@ -46,14 +46,14 @@ Service   Service      (interface)   (interface)     Stores
 
 `CloudSyncState.status`:
 
-- `disabled` – off. No auth, no network, nothing scheduled.
-- `linking` – setup in progress (auth + folder/file + first backup).
-- `idle` – enabled, everything uploaded.
-- `pending` – enabled, committed changes waiting to upload.
-- `syncing` – an upload is in flight.
-- `remoteConflict` – the remote file changed unexpectedly (another device).
-- `requiresSignIn` – authorization lost/revoked.
-- `error` – a non-transient error the user should see.
+- `disabled`: off. No auth, no network, nothing scheduled.
+- `linking`: setup in progress (auth + folder/file + first backup).
+- `idle`: enabled, everything uploaded.
+- `pending`: enabled, committed changes waiting to upload.
+- `syncing`: an upload is in flight.
+- `remoteConflict`: the remote file changed unexpectedly (another device).
+- `requiresSignIn`: authorization lost/revoked.
+- `error`: a non-transient error the user should see.
 
 ## Enabling / reconciliation
 

@@ -1,15 +1,12 @@
 package com.budgetsense.budgetsense
 
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
-import android.os.Build
-import android.os.Bundle
 import android.widget.RemoteViews
 import kotlin.math.floor
 import kotlin.math.max
@@ -33,25 +30,8 @@ import kotlin.math.max
  * right. It fills the available width (more weeks on wider phones) and keeps a
  * fixed row height, so it never stretches vertically.
  */
-class NoSpendWidgetProvider : AppWidgetProvider() {
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray,
-    ) {
-        for (id in appWidgetIds) render(context, appWidgetManager, id)
-    }
-
-    override fun onAppWidgetOptionsChanged(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetId: Int,
-        newOptions: Bundle,
-    ) {
-        render(context, appWidgetManager, appWidgetId)
-    }
-
-    private fun render(context: Context, manager: AppWidgetManager, id: Int) {
+class NoSpendWidgetProvider : ResizableWidgetProvider() {
+    override fun render(context: Context, manager: AppWidgetManager, id: Int) {
         val states = WidgetSupport.value(context, "spendGrid", "")
         val footer = WidgetSupport.value(context, "footerText", "Mindful spending")
         val monthsRaw = WidgetSupport.value(context, "spendMonths", "")
@@ -278,14 +258,8 @@ class NoSpendWidgetProvider : AppWidgetProvider() {
         if (shadow != 0) setShadowLayer(2.5f * px, 0f, 0f, shadow)
     }
 
-    /** Config-aware colour lookup that also works below API 23. */
-    private fun color(context: Context, id: Int): Int =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            context.getColor(id)
-        } else {
-            @Suppress("DEPRECATION")
-            context.resources.getColor(id)
-        }
+    /** Resolves a colour against the context's current (day or night) config. */
+    private fun color(context: Context, id: Int): Int = context.getColor(id)
 
     companion object {
         // Must match kNoSpendWeeks in widget_sync.dart.

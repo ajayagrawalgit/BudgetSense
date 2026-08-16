@@ -1,0 +1,200 @@
+name: Auto release on merge
+
+# Every merge to main that changes shipped code rebuilds the APK and publishes
+# it as the new latest release. No tagging by hand, no clicking through the
+# releases page.
+#
+# HOW THIS AVOIDS FIGHTING release.yml
+# ------------------------------------
+# release.yml owns real version tags (v0.1) and is how a deliberate, named
+# version goes out. This workflow owns build tags (v0.1-build.42), and
+# release.yml explicitly ignores those. One commit therefore produces exactly
+# one release, from exactly one workflow.
+#
+# Docs-only and comment-only merges are skipped on purpose: republishing an
+# identical APK because a typo was fixed in a Markdown file is noise, and
+# docs.yml already redeploys the site for those.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/**"
+      - "android/**"
+      - "ios/**"
+      - "assets/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
+      - ".github/workflows/auto-release.yml"
+  workflow_dispatch:
+
+# Serialised, and deliberately NOT cancel-in-progress. Cancelling half way
+# through publishing is how you end up with a tag that has no APK attached.
+concurrency:
+  group: auto-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: 3.44.4
+
+jobs:
+  # The same gate a pull request faces. If this fails, nothing is published.
+  gate:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Build APK and publish release
+    needs: gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write # create the tag and the release
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history, so the changelog can look backwards
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate code (Drift/build_runner)
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # The release name comes from AppInfo.version, the same single source of
+      # truth release.yml uses. The build number is the run number, so every
+      # automated build is distinct and monotonically increasing even when the
+      # marketing version stays at 0.1 for months.
+      - name: Work out version and tag
+        id: ver
+        run: |
+          set -euo pipefail
+          name="$(grep -E "version = '" lib/core/constants/app_info.dart \
+            | head -1 | sed -E "s/.*version = '([^']*)'.*/\1/")"
+          if [ -z "$name" ]; then
+            echo "::error::Could not read AppInfo.version"; exit 1
+          fi
+          build="${GITHUB_RUN_NUMBER}"
+          echo "name=$name"           >> "$GITHUB_OUTPUT"
+          echo "build=$build"         >> "$GITHUB_OUTPUT"
+          echo "tag=v$name-build.$build" >> "$GITHUB_OUTPUT"
+
+      # If a real version tag already points at this commit, release.yml is
+      # handling it. A hand-made v0.1 release is the authoritative one and must
+      # not be shadowed by an automated build of the same commit.
+      #
+      # Uses git rather than `gh release list`, which cannot report a release's
+      # target commit. The tag is the thing that actually decides here anyway.
+      - name: Skip if this commit already has a version tag
+        id: guard
+        run: |
+          set -euo pipefail
+          existing="$(git tag --points-at HEAD | grep -E '^v' | grep -v -- '-build\.' || true)"
+          if [ -n "$existing" ]; then
+            echo "Already tagged for a manual release: $existing"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release preflight
+        if: steps.guard.outputs.skip == 'false'
+        run: bash scripts/release_preflight.sh "${{ steps.ver.outputs.name }}"
+
+      # Real signing only from CI secret storage, written outside the checkout.
+      # With no secrets the build stays UNSIGNED and is labelled as such. It is
+      # never debug-signed, because a debug-signed APK looks installable while
+      # being trivially forgeable.
+      - name: Configure signing (if secrets present)
+        id: signing
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            secure_dir="${RUNNER_TEMP}/budgetsense-signing"
+            mkdir -p "$secure_dir"
+            chmod 700 "$secure_dir"
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$secure_dir/upload-keystore.jks"
+            cat > "$secure_dir/key.properties" <<EOF
+          storeFile=$secure_dir/upload-keystore.jks
+          storePassword=${ANDROID_KEYSTORE_PASSWORD}
+          keyAlias=${ANDROID_KEY_ALIAS}
+          keyPassword=${ANDROID_KEY_PASSWORD}
+          EOF
+            chmod 600 "$secure_dir/upload-keystore.jks" "$secure_dir/key.properties"
+            echo "BUDGETSENSE_KEYSTORE_PROPERTIES=$secure_dir/key.properties" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No signing secrets; producing an UNSIGNED release APK."
+          fi
+
+      - name: Build release APK
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          flutter build apk --release \
+            --build-name="${{ steps.ver.outputs.name }}" \
+            --build-number="${{ steps.ver.outputs.build }}"
+          mkdir -p release-artifacts
+          if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
+            src="build/app/outputs/flutter-apk/app-release.apk"
+            out="BudgetSense-${{ steps.ver.outputs.name }}-production.apk"
+          else
+            src="build/app/outputs/flutter-apk/app-release-unsigned.apk"
+            [ -f "$src" ] || src="build/app/outputs/flutter-apk/app-release.apk"
+            out="BudgetSense-${{ steps.ver.outputs.name }}-release-unsigned.apk"
+          fi
+          cp "$src" "release-artifacts/$out"
+          # Stable filename so the README download button never goes stale.
+          cp "$src" "release-artifacts/BudgetSense.apk"
+
+      - name: Generate checksums
+        if: steps.guard.outputs.skip == 'false'
+        run: bash scripts/apk_checksum.sh
+
+      # Prefer the hand-written CHANGELOG entry for this version. It says what
+      # actually changed for a person. Fall back to commit subjects only when
+      # there is no matching section.
+      - name: Build changelog for the release notes
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          python3 tool/release_notes.py \
+            --version "${{ steps.ver.outputs.name }}" \
+            --build "${{ steps.ver.outputs.build }}" \
+            --signed "${{ steps.signing.outputs.signed }}" \
+            > /tmp/release-notes.md
+          cat /tmp/release-notes.md
+
+      - name: Publish release
+        if: steps.guard.outputs.skip == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: BudgetSense ${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.build }})
+          body_path: /tmp/release-notes.md
+          make_latest: true
+          files: |
+            release-artifacts/*.apk
+            release-artifacts/SHA256SUMS

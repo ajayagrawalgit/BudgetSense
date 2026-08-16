@@ -65,7 +65,13 @@ extension FontChoiceX on FontChoice {
 
   /// A preview line for the picker - mixes letters, a name and a number so the
   /// user can judge readability of amounts before applying.
-  String get sample => 'Coffee  ·  \$4.50';
+  ///
+  /// Of the bundled faces only Caveat carries a rupee glyph; the rest borrow one
+  /// from the platform fallback. That is deliberate rather than a defect. The
+  /// rupee is the app's default currency symbol, so every real amount renders
+  /// through the same fallback, and a preview that avoided the glyph would
+  /// flatter the font instead of showing the screens it is being chosen for.
+  String get sample => 'Chai  ·  ₹12';
 
   /// Preview style rendered in this choice's own font.
   TextStyle previewStyle(Color color) => TextStyle(

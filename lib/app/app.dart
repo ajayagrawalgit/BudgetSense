@@ -8,6 +8,8 @@ import '../core/services/screen_security_service.dart';
 import '../core/services/widget_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_fonts.dart';
+import '../core/theme/app_spacing.dart';
+import '../core/utils/app_log.dart';
 import '../core/theme/paper_texture.dart';
 import '../core/theme/theme_resolver.dart';
 import '../core/utils/haptics.dart';
@@ -19,7 +21,6 @@ import '../features/widgets/widget_sync.dart';
 import 'cloud_providers.dart';
 import 'feature_providers.dart';
 import 'router.dart';
-import 'update_providers.dart';
 
 /// Default note stamped on expenses added via the home-screen widget when the
 /// user leaves the notes blank. Handled silently in the background.
@@ -48,16 +49,9 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       // network) unless the user previously enabled cloud backup.
       try {
         await ref.read(cloudSyncControllerProvider).loadOnStart();
-      } catch (_) {
+      } catch (e, s) {
         // Cloud restore-on-start must never crash launch.
-      }
-      // Quietly check for an app update (sideloaded builds). Silent and
-      // non-blocking: it shows a dismissible banner only if one is available
-      // and not already dismissed, and never throws.
-      try {
-        await ref.read(updateServiceProvider).checkForUpdate();
-      } catch (_) {
-        // An update check must never crash launch.
+        AppLog.error('Cloud restore on start failed', error: e, stackTrace: s);
       }
     });
   }
@@ -83,8 +77,13 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
 
   bool _quickAddOpen = false;
   bool _remindersBootstrapped = false;
-  bool _recurringCaughtUp = false;
+  bool _thresholdAlertsBootstrapped = false;
+  bool _schedulesRolledForward = false;
   bool? _appliedScreenSecurity;
+
+  /// The typeface the last build was rendered with, so a change can be applied
+  /// instantly instead of being animated. See [_themeAnimationDuration].
+  FontChoice? _lastFont;
 
   /// Re-arms the "record your expenses" nudge on launch. Running on each cold
   /// start refreshes the rolling window and rotates the messages, so reminders
@@ -100,8 +99,9 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
             messages: reminderMessages,
             titles: reminderTitles,
           );
-    } catch (_) {
+    } catch (e, s) {
       // Never let reminder scheduling crash startup.
+      AppLog.error('Reminder scheduling failed', error: e, stackTrace: s);
     }
   }
 
@@ -129,10 +129,45 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
     });
   }
 
+  /// How long [MaterialApp] should take to cross-fade between themes.
+  ///
+  /// Colours interpolate beautifully, so an accent or light/dark change gets
+  /// the full gentle fade. A *typeface* change does not: `ThemeData.lerp`
+  /// interpolates every font size while swapping the family abruptly at the
+  /// halfway point, so every glyph in the app re-measures and re-lays-out on
+  /// every frame of the transition, only to snap to the new face regardless.
+  /// That is the visible stutter. Applying a font change in a single frame is
+  /// both cheaper and calmer than animating something that cannot be animated.
+  Duration _themeAnimationDuration(SettingsState settings) {
+    final previous = _lastFont;
+    // Recorded unconditionally, so the comparison stays honest even across
+    // builds that return early below.
+    _lastFont = settings.fontChoice;
+
+    if (settings.reduceMotion) return Duration.zero;
+    final fontChanged = previous != null && previous != settings.fontChoice;
+    return fontChanged ? Duration.zero : Motion.base;
+  }
+
   @override
   Widget build(BuildContext context) {
     final settingsAsync = ref.watch(settingsControllerProvider);
     final settings = settingsAsync.valueOrNull;
+
+    // Payment/loan due reminders used to be scheduled only if the user found
+    // the "Reschedule all notifications" button in Settings. Watching these
+    // streams here means any add, edit, delete, or mark-paid automatically
+    // re-lays the reminders with the fresh due dates, no manual step needed.
+    ref.listen(recurringPaymentsStreamProvider, (_, __) {
+      unawaited(reschedulePaymentReminders(ref));
+    });
+    ref.listen(loansStreamProvider, (_, __) {
+      unawaited(reschedulePaymentReminders(ref));
+    });
+
+    ref.listen(thresholdEvaluationsProvider, (_, __) {
+      unawaited(dispatchCurrentThresholdAlerts(ref));
+    });
 
     // Keep the global haptics gate in sync with the user's preference. Done in
     // build so it tracks every settings change, including a restore/import.
@@ -179,17 +214,31 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       );
     }
 
-    // Roll every auto-adding recurring payment forward to today, exactly once
-    // per launch. This posts any periods that have come due since the last open
-    // (so a monthly SIP or rent "recreates" itself each month) and is a no-op
-    // when nothing is due. Guarded so a rebuild never double-posts.
-    if (!_recurringCaughtUp) {
-      _recurringCaughtUp = true;
+    if (!_thresholdAlertsBootstrapped) {
+      _thresholdAlertsBootstrapped = true;
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => unawaited(dispatchCurrentThresholdAlerts(ref)),
+      );
+    }
+
+    // Move any overdue recurring-payment schedules forward to today, exactly
+    // once per launch. This posts NO money: a SIP, rent or subscription only
+    // becomes an expense when the user taps "Mark paid". All this does is stop
+    // a payment that came due while the app was closed from showing a stale
+    // due date. Guarded so a rebuild never runs it twice.
+    if (!_schedulesRolledForward) {
+      _schedulesRolledForward = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
-          await catchUpRecurringPayments(ref);
-        } catch (_) {
-          // Never let auto-roll crash startup.
+          await rollRecurringSchedulesForward(ref);
+          await reschedulePaymentReminders(ref);
+        } catch (e, s) {
+          // Never let schedule roll-forward crash startup.
+          AppLog.error(
+            'Schedule roll-forward failed',
+            error: e,
+            stackTrace: s,
+          );
         }
       });
     }
@@ -212,9 +261,8 @@ class _AppState extends ConsumerState<App> with WidgetsBindingObserver {
       theme: themes.light,
       darkTheme: themes.dark,
       themeMode: themes.mode,
-      themeAnimationDuration: settings.reduceMotion
-          ? Duration.zero
-          : const Duration(milliseconds: 250),
+      themeAnimationDuration: _themeAnimationDuration(settings),
+      themeAnimationCurve: Curves.easeInOut,
       routerConfig: router,
       builder: (context, child) {
         // Respect the user's reduce-motion preference app-wide.

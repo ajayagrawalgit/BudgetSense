@@ -50,14 +50,19 @@ the full backup and recovery specifications.
 - Home screen widgets for a quick glance and a quick add.
 - Gentle reminders for recurring payments and EMIs.
 - Optional biometric app lock and screenshot blocking.
-- Optional, end-to-end encrypted Google Drive backup that you control.
+- Optional Google Drive backup, encrypted on your device with a passphrase you
+  choose before anything is uploaded.
 
 ## What BudgetSense is not
 
-BudgetSense is a personal journal to help you keep track of your own money. It is
-not financial, investment, or tax advice. It has no ads, no account, and no
-tracking. Nothing you enter leaves your phone unless you explicitly turn on
-backup.
+BudgetSense is a personal budgeting tool to help you keep track of your own
+money. It is not financial, investment, tax, or accounting advice, it is not a
+bank or a financial service, and it cannot promise any particular result. Using
+it is optional, you can stop at any time, and decisions about your money remain
+yours.
+
+It has no ads, no account, and no tracking. Nothing you enter leaves your phone
+unless you turn on cloud backup yourself.
 
 ## How this documentation is organised
 

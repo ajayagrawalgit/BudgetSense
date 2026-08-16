@@ -11,6 +11,7 @@ import '../../data/cloud/cloud_failure.dart';
 import '../../data/cloud/cloud_sync_controller.dart';
 import '../../data/cloud/cloud_sync_state.dart';
 import '../../domain/services/snapshot_service.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 
 /// Backup and Sync to Cloud settings (Phase 10). Strictly opt-in; the toggle
@@ -43,9 +44,7 @@ class _CloudBackupSectionState extends ConsumerState<CloudBackupSection> {
 
   void _snack(String msg) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(SnackBar(content: Text(msg)));
+    context.showMessage(msg);
   }
 
   @override
@@ -211,7 +210,7 @@ class _CloudBackupSectionState extends ConsumerState<CloudBackupSection> {
 
   Future<void> _onToggle(bool value) async {
     if (!value) {
-      final ok = await _confirm(
+      final ok = await context.confirm(
         title: 'Turn off cloud backup?',
         message: 'Your local data and your existing cloud backup are both '
             'kept. Automatic backups will simply stop until you turn this back '
@@ -222,7 +221,7 @@ class _CloudBackupSectionState extends ConsumerState<CloudBackupSection> {
       return;
     }
     // Explain, then collect a recovery passphrase, then link.
-    final proceed = await _confirm(
+    final proceed = await context.confirm(
       title: 'Back up to Google Drive',
       message: 'BudgetSense will keep one encrypted backup file in a folder '
           'named "BudgetSense_Backup" in your Google Drive. Everything is '
@@ -304,7 +303,13 @@ class _CloudBackupSectionState extends ConsumerState<CloudBackupSection> {
           _showRestoreResult(result);
         });
       case 'overwrite':
-        final ok = await _confirm(
+        // The sheet is gone by now; if this section left the screen with it we
+        // cannot ask, so treat that exactly like declining and change nothing.
+        if (!mounted) {
+          await _c.reconcileCancel();
+          return;
+        }
+        final ok = await context.confirm(
           title: 'Replace the cloud backup?',
           message:
               'This replaces the cloud backup file with this device\u2019s '
@@ -353,7 +358,7 @@ class _CloudBackupSectionState extends ConsumerState<CloudBackupSection> {
   }
 
   Future<void> _deleteCloudBackup() async {
-    final ok = await _confirm(
+    final ok = await context.confirm(
       title: 'Delete cloud backup?',
       message: 'This permanently deletes the backup file in Google Drive. Your '
           'local data on this device is NOT affected. This cannot be undone.',
@@ -379,77 +384,33 @@ class _CloudBackupSectionState extends ConsumerState<CloudBackupSection> {
     _snack('${parts.join('; ')}. Nothing existing was changed.');
   }
 
-  Future<bool> _showRestorePreview(RestorePreview p) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Restore from cloud?'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                      'Backup created ${FriendlyDate.relative(p.backupCreatedAt)} '
-                      '(app v${p.appVersion}).'),
-                  const SizedBox(height: Insets.sm),
-                  Text('New records to add: ${p.toInsert}'),
-                  Text('Already present (skip): ${p.toSkip}'),
-                  if (p.idConflicts > 0)
-                    Text('ID conflicts kept separately: ${p.idConflicts}'),
-                  const SizedBox(height: Insets.sm),
-                  const Text(
-                    'Existing data will not be deleted or overwritten. New '
-                    'records are added. Previously imported records are '
-                    'skipped. Your current settings stay unless you choose to '
-                    'apply a backed-up one.',
-                  ),
-                ],
-              ),
+  Future<bool> _showRestorePreview(RestorePreview p) {
+    return context.confirm(
+      title: 'Restore from cloud?',
+      confirmLabel: 'Restore',
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Backup created ${FriendlyDate.relative(p.backupCreatedAt)} '
+                '(app v${p.appVersion}).'),
+            const SizedBox(height: Insets.sm),
+            Text('New records to add: ${p.toInsert}'),
+            Text('Already present (skip): ${p.toSkip}'),
+            if (p.idConflicts > 0)
+              Text('ID conflicts kept separately: ${p.idConflicts}'),
+            const SizedBox(height: Insets.sm),
+            const Text(
+              'Existing data will not be deleted or overwritten. New '
+              'records are added. Previously imported records are '
+              'skipped. Your current settings stay unless you choose to '
+              'apply a backed-up one.',
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Restore'),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-  }
-
-  Future<bool> _confirm({
-    required String title,
-    required String message,
-    required String confirmLabel,
-    bool destructive = false,
-  }) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: Text(title),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                style: destructive
-                    ? FilledButton.styleFrom(
-                        backgroundColor: context.colors.critical)
-                    : null,
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(confirmLabel),
-              ),
-            ],
-          ),
-        ) ??
-        false;
+          ],
+        ),
+      ),
+    );
   }
 
   Future<String?> _askPassphrase(String title) async {

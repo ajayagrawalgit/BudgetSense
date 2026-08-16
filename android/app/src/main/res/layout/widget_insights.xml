@@ -18,14 +18,14 @@
             android:textColor="@color/widget_ink_soft"
             android:textSize="12sp"
             android:textStyle="bold"
-            android:text="Insights" />
+            android:text="@string/widget_insights_title" />
         <TextView
             android:id="@+id/month_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/widget_ink_faint"
             android:textSize="12sp"
-            android:text="This month" />
+            android:text="@string/widget_this_month" />
     </LinearLayout>
 
     <LinearLayout
@@ -33,6 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="10dp"
         android:orientation="horizontal"
+        android:baselineAligned="false"
         android:background="@drawable/widget_card_bg"
         android:padding="12dp">
 

@@ -6,6 +6,7 @@ import '../../core/constants/enums.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/category_icons.dart';
 import '../../core/theme/theme_resolver.dart';
+import '../../core/validation/validators.dart';
 import '../../core/utils/icon_suggester.dart';
 import '../../data/seed/default_data.dart';
 import '../../domain/entities/transaction_entity.dart';
@@ -302,8 +303,7 @@ class _CategoryFormState extends State<_CategoryForm> {
                   controller: _name,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: const InputDecoration(labelText: 'Name'),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                  validator: (v) => Validators.name(v),
                   onChanged: _onNameChanged,
                 ),
                 const SizedBox(height: Insets.lg),

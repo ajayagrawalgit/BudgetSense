@@ -91,7 +91,10 @@ class LocalNotificationService implements NotificationService {
     tzdata.initializeTimeZones();
     _configureLocalTimeZone();
     const settings = InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+      // A flat white ensō silhouette, not the launcher tile. Android builds the
+      // status-bar icon from the alpha channel alone, so an opaque tile would
+      // show up as a filled white square.
+      android: AndroidInitializationSettings('@drawable/ic_notification'),
       iOS: DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,

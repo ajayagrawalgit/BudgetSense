@@ -8,46 +8,6 @@ import 'app_theme.dart';
 /// [AccentPreset] and platform [Brightness]. One place decides how a variant
 /// maps to a palette - screens never branch on the variant themselves.
 abstract final class ThemeResolver {
-  static ({ThemeData theme, ThemeMode mode}) resolve({
-    required AppThemeVariant variant,
-    required AccentPreset accent,
-    required Brightness platformBrightness,
-    FontChoice font = FontChoice.system,
-    bool blurSupported = true,
-  }) {
-    switch (variant) {
-      case AppThemeVariant.system:
-        return (
-          theme: platformBrightness == Brightness.dark
-              ? _dark(accent, font)
-              : _light(accent, font),
-          mode: ThemeMode.system,
-        );
-      case AppThemeVariant.light:
-        return (theme: _light(accent, font), mode: ThemeMode.light);
-      case AppThemeVariant.dark:
-        return (theme: _dark(accent, font), mode: ThemeMode.dark);
-      case AppThemeVariant.amoled:
-        return (
-          theme: AppThemeBuilder.build(
-            AppColors.amoled(accent.color),
-            brightness: Brightness.dark,
-            font: font,
-          ),
-          mode: ThemeMode.dark,
-        );
-      case AppThemeVariant.glass:
-        return (
-          theme: AppThemeBuilder.build(
-            AppColors.glass(accent.color, blurSupported: blurSupported),
-            brightness: Brightness.dark,
-            font: font,
-          ),
-          mode: ThemeMode.dark,
-        );
-    }
-  }
-
   static ThemeData _light(
     AccentPreset a, [
     FontChoice font = FontChoice.system,
@@ -68,14 +28,51 @@ abstract final class ThemeResolver {
         font: font,
       );
 
+  /// The last resolved pair, keyed by the inputs that produced it.
+  static ({ThemeData light, ThemeData dark, ThemeMode mode})? _cached;
+  static ({
+    AppThemeVariant variant,
+    AccentPreset accent,
+    FontChoice font,
+    bool blurSupported,
+  })? _cacheKey;
+
   /// Build both light + dark for [MaterialApp]'s theme/darkTheme so system mode
   /// switches instantly. For AMOLED/Glass we return the same palette for both.
+  ///
+  /// Results are memoised on their inputs. `App.build` runs on every settings
+  /// change and every provider tick, and a freshly built [ThemeData] is a
+  /// *different object* even when it looks identical. `MaterialApp` restarts
+  /// its theme animation whenever that object changes, so without this an
+  /// unrelated rebuild could kick off a spurious theme lerp. Returning the
+  /// identical instance for identical inputs makes that impossible.
   static ({ThemeData light, ThemeData dark, ThemeMode mode}) resolvePair({
     required AppThemeVariant variant,
     required AccentPreset accent,
     FontChoice font = FontChoice.system,
     bool blurSupported = true,
   }) {
+    final key = (
+      variant: variant,
+      accent: accent,
+      font: font,
+      blurSupported: blurSupported,
+    );
+    final cached = _cached;
+    if (cached != null && _cacheKey == key) return cached;
+
+    final resolved = _resolvePair(variant, accent, font, blurSupported);
+    _cacheKey = key;
+    _cached = resolved;
+    return resolved;
+  }
+
+  static ({ThemeData light, ThemeData dark, ThemeMode mode}) _resolvePair(
+    AppThemeVariant variant,
+    AccentPreset accent,
+    FontChoice font,
+    bool blurSupported,
+  ) {
     switch (variant) {
       case AppThemeVariant.system:
         return (
@@ -84,17 +81,11 @@ abstract final class ThemeResolver {
           mode: ThemeMode.system
         );
       case AppThemeVariant.light:
-        return (
-          light: _light(accent, font),
-          dark: _light(accent, font),
-          mode: ThemeMode.light
-        );
+        final t = _light(accent, font);
+        return (light: t, dark: t, mode: ThemeMode.light);
       case AppThemeVariant.dark:
-        return (
-          light: _dark(accent, font),
-          dark: _dark(accent, font),
-          mode: ThemeMode.dark
-        );
+        final t = _dark(accent, font);
+        return (light: t, dark: t, mode: ThemeMode.dark);
       case AppThemeVariant.amoled:
         final t = AppThemeBuilder.build(
           AppColors.amoled(accent.color),

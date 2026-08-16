@@ -35,6 +35,18 @@ class SnapshotEncryptionService {
   static const int _saltBytes = 16;
   static const int defaultIterations = 210000;
 
+  /// Bounds on the PBKDF2 iteration count accepted from a backup file.
+  ///
+  /// The iteration count is read from the envelope so that a backup written by
+  /// an older build still opens. That makes it ATTACKER-CONTROLLED input: a
+  /// hostile `.bsbak` could ask for billions of iterations and wedge the app in
+  /// an unbounded key derivation (CWE-1284/CWE-400), which on the restore path
+  /// happens before the user can cancel. The ceiling keeps derivation bounded;
+  /// the floor stops a downgraded file from making a cheap-to-crack KEK look
+  /// legitimate.
+  static const int minAcceptedIterations = 100000;
+  static const int maxAcceptedIterations = 1000000;
+
   /// Generate fresh key material for a brand-new backup: a random DEK wrapped
   /// under a KEK derived from [passphrase]. Cache the returned DEK (only) in
   /// secure storage for automatic uploads.
@@ -43,6 +55,7 @@ class SnapshotEncryptionService {
     int iterations = defaultIterations,
   }) async {
     _requirePassphrase(passphrase);
+    _requireIterations(iterations);
     final salt = _randomBytes(_saltBytes);
     final dek = _randomBytes(32);
     final wrap = await _wrapDek(dek, passphrase, salt, iterations);
@@ -66,6 +79,7 @@ class SnapshotEncryptionService {
     int iterations = defaultIterations,
   }) async {
     _requirePassphrase(newPassphrase);
+    _requireIterations(iterations);
     final env = _EncEnvelope.parse(bytes);
     final dek = await _unwrapDek(env, oldPassphrase);
     final salt = _randomBytes(_saltBytes);
@@ -238,6 +252,21 @@ class SnapshotEncryptionService {
     }
   }
 
+  /// Guards the WRITE path with the same bounds the parser enforces.
+  ///
+  /// Without this it is possible to produce an envelope that this very build
+  /// would refuse to open, which would look to the user like silent backup
+  /// corruption discovered only at restore time.
+  void _requireIterations(int iterations) {
+    if (iterations < minAcceptedIterations ||
+        iterations > maxAcceptedIterations) {
+      throw const CloudFailure(
+        CloudFailureKind.encryptionFailed,
+        'Unsupported encryption settings for a new backup.',
+      );
+    }
+  }
+
   Uint8List _randomBytes(int n) {
     final out = Uint8List(n);
     for (var i = 0; i < n; i++) {
@@ -372,10 +401,42 @@ class _EncEnvelope {
         'app, then restore.',
       );
     }
-    List<int> b(String k) => base64Decode(m[k]! as String);
+    // Everything below is untrusted file content. A malformed or hostile
+    // envelope must fail as a clean, typed CloudFailure rather than escaping as
+    // a raw CastError/FormatException, which callers do not expect and which
+    // would surface to the user as a crash mid-restore.
+    List<int> b(String k) {
+      final raw = m[k];
+      if (raw is! String) {
+        throw const CloudFailure(
+          CloudFailureKind.downloadIntegrityMismatch,
+          'This backup file is incomplete or damaged, so it was not restored.',
+        );
+      }
+      try {
+        return base64Decode(raw);
+      } on FormatException {
+        throw const CloudFailure(
+          CloudFailureKind.downloadIntegrityMismatch,
+          'This backup file is incomplete or damaged, so it was not restored.',
+        );
+      }
+    }
+
+    final rawIterations = m['iterations'];
+    final iterations = rawIterations is num ? rawIterations.toInt() : null;
+    if (iterations == null ||
+        iterations < SnapshotEncryptionService.minAcceptedIterations ||
+        iterations > SnapshotEncryptionService.maxAcceptedIterations) {
+      throw const CloudFailure(
+        CloudFailureKind.downloadIntegrityMismatch,
+        'This backup file declares unsupported encryption settings, so it was '
+        'not restored.',
+      );
+    }
     return _EncEnvelope(
       salt: b('salt'),
-      iterations: (m['iterations']! as num).toInt(),
+      iterations: iterations,
       wrappedKey: b('wrappedKey'),
       wrapNonce: b('wrapNonce'),
       wrapMac: b('wrapMac'),

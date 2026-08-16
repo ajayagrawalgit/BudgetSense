@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/constants/app_info.dart';
 import '../data/cloud/cloud_gateway.dart';
 import '../data/cloud/cloud_metadata_store.dart';
 import '../data/cloud/cloud_sync_controller.dart';
@@ -111,6 +110,3 @@ final cloudSyncControllerProvider = Provider<CloudSyncController>((ref) {
   });
   return controller;
 });
-
-/// App version, exposed for envelope metadata elsewhere if needed.
-final appVersionProvider = Provider<String>((_) => AppInfo.version);

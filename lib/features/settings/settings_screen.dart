@@ -11,6 +11,8 @@ import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/app_log.dart';
+import '../../core/utils/fuzzy_search.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import 'about_screen.dart';
 import 'backup_screen.dart';
@@ -22,6 +24,7 @@ import 'trash_screen.dart';
 import 'profile_screen.dart';
 import 'reference_manager_screen.dart';
 import 'security_screen.dart';
+import 'settings_easter_eggs.dart';
 import 'settings_controller.dart';
 import 'settings_state.dart';
 import '../../domain/services/snapshot_service.dart';
@@ -305,28 +308,36 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildResults(BuildContext context, AppColors colors) {
-    final q = _query.toLowerCase();
-    final hits = _index
-        .where(
-          (i) =>
-              i.label.toLowerCase().contains(q) ||
-              i.keywords.contains(q) ||
-              i.section.toLowerCase().contains(q),
-        )
-        .toList();
+    final hits = fuzzySearch(
+      _query,
+      _index,
+      (i) => [
+        SearchableField(i.label, weight: 1),
+        SearchableField(i.keywords, weight: 0.8),
+        SearchableField(i.section, weight: 0.6),
+      ],
+    );
     final text = Theme.of(context).textTheme;
-    if (hits.isEmpty) {
+    final egg = settingsEggFor(_query);
+
+    if (hits.isEmpty && egg == null) {
       return CalmEmptyState(
         title: 'No settings found',
         message: 'Nothing matches "$_query". Try another word.',
         icon: Icons.search_off_outlined,
       );
     }
+    // The egg, when there is one, is the first card; real results follow it.
+    final eggCount = egg == null ? 0 : 1;
     return ListView.separated(
       padding: const EdgeInsets.all(Insets.lg),
-      itemCount: hits.length,
+      itemCount: hits.length + eggCount,
       separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
-      itemBuilder: (_, i) {
+      itemBuilder: (_, index) {
+        if (egg != null && index == 0) {
+          return SettingsEggCard(egg, key: ValueKey(egg));
+        }
+        final i = index - eggCount;
         final item = hits[i];
         return CalmCard(
           onTap: () {
@@ -519,10 +530,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         children: [
                           for (final t in InvestmentTreatment.values)
                             ChoiceChip(
-                              label: Text(t.name),
+                              label: Text(
+                                t == InvestmentTreatment.custom
+                                    ? s.investmentTreatmentLabel
+                                    : t.label,
+                              ),
                               selected: s.investmentTreatment == t,
-                              onSelected: (_) => controller.save(
-                                (c) => c.copyWith(investmentTreatment: t),
+                              onSelected: (_) async {
+                                await controller.save(
+                                  (c) => c.copyWith(investmentTreatment: t),
+                                );
+                                if (t == InvestmentTreatment.custom) {
+                                  await _editInvestmentCustomLabel(
+                                    s.investmentTreatmentCustomLabel,
+                                  );
+                                }
+                              },
+                            ),
+                          if (s.investmentTreatment ==
+                              InvestmentTreatment.custom)
+                            ActionChip(
+                              avatar: const Icon(Icons.edit, size: 16),
+                              label: const Text('Rename'),
+                              onPressed: () => _editInvestmentCustomLabel(
+                                s.investmentTreatmentCustomLabel,
                               ),
                             ),
                         ],
@@ -723,7 +754,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _SectionLabel(label),
+            SectionLabel(label),
             ...children,
           ],
         ),
@@ -736,28 +767,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       );
 
   Future<void> _confirmWipe() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete all data?'),
-        content: const Text(
+    final ok = await context.confirm(
+      title: 'Delete all data?',
+      message:
           'This permanently removes every transaction, category, payment, loan '
           'and setting on this device. Consider a backup first. This cannot be '
           'undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Delete everything'),
-          ),
-        ],
-      ),
+      confirmLabel: 'Delete everything',
+      destructive: true,
     );
-    if (ok != true) return;
+    if (!ok) return;
 
     // Best-effort safety net: grab a full in-memory snapshot before the wipe so
     // we can offer a brief Undo. If the snapshot can't be taken, we still wipe,
@@ -777,18 +796,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await ref.read(databaseProvider).wipeAllData();
     refreshAllDataProviders(ref);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: const Text("Everything's cleared. Fresh start."),
-          duration: const Duration(seconds: 8),
-          action: undoBytes == null
-              ? null
-              : SnackBarAction(
-                  label: 'Undo', onPressed: () => _undoWipe(undoBytes!)),
-        ),
-      );
+    context.showMessage(
+      "Everything's cleared. Fresh start.",
+      duration: const Duration(seconds: 8),
+      actionLabel: undoBytes == null ? null : 'Undo',
+      onAction: undoBytes == null ? null : () => _undoWipe(undoBytes!),
+    );
   }
 
   Future<void> _undoWipe(List<int> bytes) async {
@@ -796,17 +809,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       await ref.read(snapshotServiceProvider).importBytes(bytes);
       refreshAllDataProviders(ref);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..clearSnackBars()
-        ..showSnackBar(
-          const SnackBar(content: Text('Brought it all back. Nothing lost.')),
-        );
+      context.showMessage('Brought it all back. Nothing lost.');
     } catch (e, s) {
       AppLog.error('Undo of data wipe failed', error: e, stackTrace: s);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Couldn't bring it back, sorry.")),
-      );
+      context.showMessage("Couldn't bring it back, sorry.");
+    }
+  }
+
+  Future<void> _editInvestmentCustomLabel(String current) async {
+    final ctrl = TextEditingController(text: current);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Custom investment label'),
+        content: TextField(
+          controller: ctrl,
+          maxLength: 24,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'e.g. Retirement'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, ctrl.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (result != null) {
+      await ref.read(settingsControllerProvider.notifier).save(
+            (c) => c.copyWith(investmentTreatmentCustomLabel: result),
+          );
     }
   }
 
@@ -880,6 +918,7 @@ class _SearchField extends StatelessWidget {
             ? null
             : IconButton(
                 icon: const Icon(Icons.close, size: 18),
+                tooltip: 'Clear search',
                 onPressed: () {
                   controller.clear();
                   onChanged('');
@@ -897,19 +936,6 @@ class _SearchField extends StatelessWidget {
           borderSide: BorderSide(color: colors.border, width: Strokes.hairline),
         ),
       ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.sm, left: Insets.xs),
-      child: Text(text, style: Theme.of(context).textTheme.labelMedium),
     );
   }
 }

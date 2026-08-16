@@ -39,7 +39,7 @@ class ImportHubScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Insets.lg),
-            const _SectionLabel('Available sources'),
+            const SectionLabel('Available sources'),
             CalmCard(
               padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
               child: Column(
@@ -125,19 +125,6 @@ class _SourceTile extends StatelessWidget {
         ),
         if (!last) Divider(height: 1, color: colors.border),
       ],
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.sm, left: Insets.xs),
-      child: Text(text, style: Theme.of(context).textTheme.labelMedium),
     );
   }
 }

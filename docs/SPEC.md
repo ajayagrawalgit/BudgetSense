@@ -21,10 +21,12 @@ layered on later without a rewrite.
 
 **Core philosophy:** feel like a quiet paper journal, not a corporate banking app.
 
-**Version:** pubspec `version: 0.11.15+33` (this is the authoritative build version).
-`lib/core/constants/app_info.dart` currently mirrors it (`version = '0.11.15'`) for
-the About screen, but that constant is maintained by hand, so keep the two in
-sync whenever the pubspec version changes.
+**Version:** BudgetSense 0.1, `versionCode` 1. The public version name lives in
+`lib/core/constants/app_info.dart` (`version = '0.1'`) and in `versionName` in
+`android/app/build.gradle.kts`. `pubspec.yaml` carries `0.1.0+1` because Dart's
+pubspec parser only accepts a three-segment semver, so it supplies the build
+number rather than the display name. Both hand-maintained copies are checked by
+`scripts/release_preflight.sh`.
 
 ---
 
@@ -47,10 +49,10 @@ Exact dependency constraints from `pubspec.yaml`:
 | XML (snapshot) | xml | ^6.6.0 |
 | Security | local_auth | ^2.2.0 |
 | File picking | file_picker | ^8.0.5 |
-| Charts | fl_chart | ^0.68.0 |
+| Charts | none (drawn with `CustomPainter`) | n/a |
 | Utilities | uuid / collection | ^4.4.0 / ^1.18.0 |
 | External links | url_launcher | ^6.3.0 |
-| Dev tools | flutter_lints / build_runner / drift_dev / mocktail | ^4.0.0 / ^2.4.11 / ^2.18.0 / ^1.0.4 |
+| Dev tools | flutter_lints / build_runner / drift_dev | ^4.0.0 / ^2.4.11 / ^2.18.0 |
 
 **Important:** no additional pub packages are downloaded beyond the above. All
 hardening and aesthetic work uses the Flutter SDK,
@@ -82,7 +84,7 @@ lib/
   core/
     constants/
       app_info.dart                  # App name, author credits, links (About)
-      branding.dart                  # kBrandMarkAsset path (enso mark for About)
+      branding.dart                  # BrandAssets paths + BrandMarks helpers
       enums.dart                     # Every domain enum
       greetings.dart                 # 107 dashboard greeting templates
       reminder_messages.dart         # 15 titles + 117 emoji nudge messages
@@ -440,10 +442,13 @@ when the motor lacks amplitude control; deprecated `vibrate(ms)` on API 24 to 25
 tagged `USAGE_TOUCH` on API 33+. Predefined effects (`EFFECT_TICK` etc.) are
 avoided because they are silent no-ops on many OEM devices; direct `Vibrator`
 calls also bypass the system touch-feedback toggle, so they fire on any device
-with a motor. Flutter's built-in `HapticFeedback` is the fallback for other
-platforms and any channel failure (ideal on iOS). Requires the `VIBRATE`
-permission. Note: the Android emulator reports a vibrator but has no physical
-motor, so haptics can only be felt on real hardware.
+with a motor. Some OEMs (Motorola in particular) ship motors with a much
+higher "won't even spin" amplitude/duration floor than our normal tuning, so
+`performHaptic` raises both for those manufacturers specifically, while every
+other OEM keeps the original tuning. Flutter's built-in `HapticFeedback` is the
+fallback for other platforms and any channel failure (ideal on iOS). Requires
+the `VIBRATE` permission. Note: the Android emulator reports a vibrator but
+has no physical motor, so haptics can only be felt on real hardware.
 
 ---
 
@@ -576,7 +581,8 @@ SharedPreferences under key `budgetsense.settings.v1`. Fields with defaults:
 | themeVariant | AppThemeVariant | system |
 | accent | AccentPreset | clay |
 | fontChoice | FontChoice | system |
-| investmentTreatment | InvestmentTreatment | separate |
+| investmentTreatment | InvestmentTreatment (spending/savings/separate/custom) | separate |
+| investmentTreatmentCustomLabel | String | '' (used only when investmentTreatment is custom) |
 | reduceMotion | bool | false |
 | hapticsEnabled | bool | true |
 | appLockEnabled | bool | false |
@@ -607,7 +613,9 @@ Enums persist by `.name`; `fromMap` falls back to defaults on any parse error.
 2. Profile, required first name (validated; "A first name is all I need to
    continue."); optional nickname, age, phone, email.
 3. Money, currency symbol (max 4 chars) and financial month start day (1-28).
-4. Cloud sync, a disabled "coming soon" toggle (placeholder).
+4. Cloud backup, an explainer only: what the optional encrypted Google Drive
+   backup is, and that it stays off until it is switched on in Settings under
+   Backup and restore. Nothing is enabled from this page.
 5. Defaults, toggle to seed starter categories and thresholds.
 "Maybe later" (top right) always seeds default categories so the app is usable
 immediately.
@@ -758,13 +766,16 @@ backup/restore round-trips.
   tucked into a collapsed **Upcoming** `CollapsibleCard` (`_UpcomingSection`),
   grouped by "Month Year", read-only rows (tap to edit). When a new month
   starts, that month's rows move from Upcoming into the working list. Extended
-  FAB "Payment"; empty state uses `CalmIllustration.calendar`. Auto-adding
-  payments also "recreate themselves" each period: on launch
-  `catchUpRecurringPayments` (in `feature_providers.dart`) calls
-  `RecurrenceService.catchUp`, which posts every period that has come due since
-  the last open and advances the schedule. Manual (non auto-add) payments are
-  left for the user to "Mark paid". Idempotent: two opens in one day post
-  nothing extra.
+  FAB "Payment"; empty state uses `CalmIllustration.calendar`.
+
+  **Nothing posts itself.** A recurring payment only becomes a transaction when
+  the user taps "Mark paid". On launch, `rollRecurringSchedulesForward` (in
+  `feature_providers.dart`) calls `RecurrenceService.rollScheduleForward`, which
+  advances any elapsed periods so the due date is not stuck in the past. It
+  creates no transactions, for auto-add and manual payments alike. Idempotent:
+  two opens in one day change nothing. The `autoAddTransaction` flag only
+  decides whether "Mark paid" also records an expense; it never grants anything
+  permission to post on its own.
 - Loans: an **expandable card** (collapsed by default) showing outstanding/
   original, EMI and repayment progress. Expanding reveals the last EMI recorded
   (amount + date + time, from `lastLoanPaymentProvider` /
@@ -886,9 +897,10 @@ ships as a committed raster PNG at each required density, so the mark is identic
 and crisp everywhere. There is no in-app icon picker.
 
 ### In-app branding
-The transparent ensō mark (`assets/branding/budgetsense_mark.png`, registered
-under `flutter.assets`) is shown as the header on the About screen and the
-onboarding welcome page via `kBrandMarkAsset`.
+The ensō mark is shown as the header on the About screen and the onboarding
+welcome page, via `BrandMarks.of(context)`, which picks the espresso-on-light or
+cream-on-dark variant to suit the current theme. Paths live in `BrandAssets`
+(`core/constants/branding.dart`); see [Branding](branding.md).
 
 ### Import (Paisa)
 `paisa_import_service.dart` imports a Paisa app JSON export. Append-only
@@ -998,7 +1010,8 @@ Ids are UUIDs.
   updatedAt) stays so the widget still shows the month.
 - iOS `NSFaceIDUsageDescription`: "BudgetSense uses Face ID to unlock the app so
   only you can see your finances."
-- No cloud calls in v1. All data is local. No raw PIN or secret is ever logged.
+- No network call happens until the user turns on cloud backup. Everything else
+  is local. No raw PIN or secret is ever logged.
 
 ---
 
@@ -1145,8 +1158,8 @@ and substitutes `{name}`. A fresh greeting shows on each dashboard open.
 
 `android/app/build.gradle.kts`:
 - `namespace` / `applicationId` = `com.budgetsense.budgetsense`.
-- `compileSdk = 36`; minSdk/targetSdk/versionCode/versionName from Flutter
-  (versionName 0.11.15, versionCode 33).
+- `compileSdk = 36`; minSdk/targetSdk/versionCode from Flutter, `versionName`
+  spelled out as `"0.1"` (see the version note at the top of this document).
 - Java/Kotlin target 17; `isCoreLibraryDesugaringEnabled = true` with
   `desugar_jdk_libs:2.1.4`.
 - Signing: `signingConfigs.release` reads `android/key.properties` (keys
@@ -1241,8 +1254,9 @@ home-screen widgets and FLAG_SECURE hardening are Android-specific.
 
 ## 19. Testing Requirements
 
-Tests (in `test/`), run with `flutter test`, use `mocktail` and, for DB tests,
-`drift/native` `NativeDatabase.memory()`:
+Tests (in `test/`), run with `flutter test`. Collaborators are replaced with
+hand-written fakes that implement the real interface (see `test/support/`), and
+DB tests use `drift/native` `NativeDatabase.memory()`:
 
 - **money_test**: precision, parsing, formatting, arithmetic, divide-by-zero.
 - **financial_calendar_test**: month ranges for different start days, keys,
@@ -1340,9 +1354,13 @@ Declared under `flutter.fonts` in pubspec.yaml, files in `assets/fonts/`:
 - Caveat (Regular), PatrickHand (Regular), GochiHand (Regular),
   ArchitectsDaughter (Regular).
 Handwritten faces get `sizeFactor > 1.0` (see DESIGN.md typography).
-`assets/branding/budgetsense_mark.png` is the
-transparent ensō mark bundled for in-app use (`kBrandMarkAsset`). The composed
-logo for the README lives outside the bundle at `docs/budgetsense_logo.png`.
+Brand artwork is split in two. `assets/branding/` holds the hand-authored
+masters and is **not** bundled (together they are tens of megabytes). The
+size-optimised derivatives in `assets/branding/derived/` are generated by
+`tool/brand_assets.py`, and only the individual files listed under
+`flutter.assets` ship in the app. The same script writes the Android launcher,
+splash and notification resources and the site artwork under
+`docs/assets/brand/`. See [Branding](branding.md).
 
 ---
 
@@ -1381,7 +1399,7 @@ and a keystore (Section 16); without them the release APK is debug-signed.
 10. **Pure domain services.** No Flutter imports, no DB access; trivially unit-testable.
 11. **No em-dashes** anywhere in source or user-facing text. No smart/curly quotes or apostrophes.
 12. **No ripple effects** (`NoSplash.splashFactory`). Motion is subtle and reduce-motion aware.
-13. **Privacy first.** FLAG_SECURE on by default (user-toggleable), backups disabled, widgets masked under lock, no cloud calls, no raw PIN.
+13. **Privacy first.** FLAG_SECURE on by default (user-toggleable), Android auto-backup disabled, widgets masked under lock, no network call until the user opts in, no raw PIN.
 14. **No new pub archives.** SDK + hand-authored vectors and CustomPainter art; the one direct-dep addition (`xml`) was already resolved transitively, so nothing new is fetched.
 15. **Never assume salary is the only income.** Use IncomeType and semantic buckets, not hard-coded names.
 16. **Snapshots must round-trip losslessly and survive schema growth.** Import is tolerant (Section 23); never rely on strict deserialization for user backups.
@@ -1402,7 +1420,7 @@ Export) and the legacy DB-only backup. This is the durable, user-owned backup.
   `SnapshotService` interface, and `SnapshotException`.
 - `data/snapshot/snapshot_tables.dart`: the on-disk table contract: ordered
   `ColSpec` columns per table, `kSnapshotTableOrder` (FK-safe), `readAllTables`
-  (export via Drift `toJson`), and `insertSnapshotRows` with TOLERANT companion
+  (export via Drift `toJson`), and `insertResolvedRow` with TOLERANT companion
   builders.
 - `data/snapshot/snapshot_codecs.dart`: `SnapshotCodecs`: `detectFormat`,
   `encode`, `decode` for all three formats.

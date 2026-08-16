@@ -10,20 +10,12 @@
          completes setup; enforced in code (CloudSyncController). Offline-first. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- In-app updates for sideloaded (non-Play) builds: hand a downloaded,
-         SHA-256-verified APK to the system installer. The user still confirms
-         in Android's own dialog; nothing installs silently. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- Local backups are written to a top-level "BudgetSense_Backup" folder in
-         shared storage (next to Documents/Downloads). On Android 11+ that needs
-         All-files access, which the user grants once in system settings; on
-         older versions the classic write permission is used. -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <!-- Legacy Android storage support for user-selected local backup files. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
 
     <application
-        android:label="BudgetSense"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -56,6 +48,7 @@
         <!-- Home-screen widgets -->
         <receiver
             android:name=".DashboardWidgetProvider"
+            android:label="@string/widget_dashboard_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -66,6 +59,7 @@
         </receiver>
         <receiver
             android:name=".QuickAddWidgetProvider"
+            android:label="@string/widget_quick_add_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -76,6 +70,7 @@
         </receiver>
         <receiver
             android:name=".InsightsWidgetProvider"
+            android:label="@string/widget_insights_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -86,6 +81,7 @@
         </receiver>
         <receiver
             android:name=".BalanceWidgetProvider"
+            android:label="@string/widget_balance_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -96,6 +92,7 @@
         </receiver>
         <receiver
             android:name=".BucketsWidgetProvider"
+            android:label="@string/widget_buckets_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -106,6 +103,7 @@
         </receiver>
         <receiver
             android:name=".RatesWidgetProvider"
+            android:label="@string/widget_rates_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -116,6 +114,7 @@
         </receiver>
         <receiver
             android:name=".RunwayWidgetProvider"
+            android:label="@string/widget_runway_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -137,6 +136,7 @@
         </receiver>
         <receiver
             android:name=".NextDueWidgetProvider"
+            android:label="@string/widget_next_due_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -147,6 +147,7 @@
         </receiver>
         <receiver
             android:name=".QuickActionsWidgetProvider"
+            android:label="@string/widget_actions_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -157,6 +158,7 @@
         </receiver>
         <receiver
             android:name=".GlanceWidgetProvider"
+            android:label="@string/widget_glance_label"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -189,19 +191,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
-        <!-- Grants a temporary, read-only content:// URI for the downloaded
-             update APK so the system installer can read it. Used only by the
-             in-app update flow. -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/provider_paths" />
-        </provider>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

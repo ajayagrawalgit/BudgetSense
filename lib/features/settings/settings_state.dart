@@ -1,6 +1,7 @@
 import '../../core/constants/enums.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_fonts.dart';
+import '../../core/utils/money.dart';
 import '../../core/utils/reminder_schedule.dart';
 
 /// Immutable snapshot of all user preferences (Section 18). Persisted as simple
@@ -15,7 +16,7 @@ class SettingsState {
     this.userEmail = '',
     this.cloudSyncEnabled = false,
     this.currencyCode = 'INR',
-    this.currencySymbol = '₹',
+    this.currencySymbol = Money.defaultCurrencySymbol,
     this.localeCode,
     this.dateFormat = 'MMM d, y',
     this.financialMonthStartDay = 1,
@@ -23,14 +24,17 @@ class SettingsState {
     this.accent = AccentPreset.clay,
     this.fontChoice = FontChoice.system,
     this.investmentTreatment = InvestmentTreatment.separate,
+    this.investmentTreatmentCustomLabel = '',
     this.reduceMotion = false,
     this.hapticsEnabled = true,
     this.appLockEnabled = false,
     this.biometricEnabled = false,
     this.screenSecurityEnabled = true,
-    this.notificationsEnabled = false,
+    this.notificationsEnabled = true,
     this.paymentRemindersEnabled = true,
     this.thresholdAlertsEnabled = true,
+    this.thresholdQuietStartMinute = 1320,
+    this.thresholdQuietEndMinute = 420,
     this.dailyRecordRemindersEnabled = true,
     this.reminderFrequency = ReminderFrequency.daily,
     this.reminderHour = 22,
@@ -71,6 +75,22 @@ class SettingsState {
   final FontChoice fontChoice;
   final InvestmentTreatment investmentTreatment;
 
+  /// User-typed label shown when [investmentTreatment] is
+  /// [InvestmentTreatment.custom], e.g. "Retirement" or "Wealth building".
+  /// Ignored for every other treatment. Empty by default.
+  final String investmentTreatmentCustomLabel;
+
+  /// The label to actually show in the UI: the custom text when the user has
+  /// set [InvestmentTreatment.custom] and typed something, otherwise the
+  /// treatment's generic [InvestmentTreatmentLabel.label]. Every screen that
+  /// displays how investments are treated should read this, not the raw enum,
+  /// so a custom name shows up everywhere consistently.
+  String get investmentTreatmentLabel =>
+      investmentTreatment == InvestmentTreatment.custom &&
+              investmentTreatmentCustomLabel.trim().isNotEmpty
+          ? investmentTreatmentCustomLabel.trim()
+          : investmentTreatment.label;
+
   // Accessibility & security.
   final bool reduceMotion;
 
@@ -90,6 +110,12 @@ class SettingsState {
   final bool notificationsEnabled;
   final bool paymentRemindersEnabled;
   final bool thresholdAlertsEnabled;
+
+  /// Daily quiet window for threshold interruptions, in minutes since midnight.
+  /// Defaults to 22:00 through 07:00. The alert planner consumes a threshold
+  /// reached here rather than delivering stale news later in the morning.
+  final int thresholdQuietStartMinute;
+  final int thresholdQuietEndMinute;
 
   /// The user-configurable "record your expenses" nudge. Enabled by default and
   /// (by default) fires once a day at 10:00 PM. [dailyRecordRemindersEnabled]
@@ -119,6 +145,16 @@ class SettingsState {
   // Number format preference.
   final bool numberFormatCompact;
 
+  /// Render [value] the way this user has asked to see money: their currency
+  /// symbol, their locale's grouping and separators, and their compact-number
+  /// preference. Every screen goes through here so the same amount never shows
+  /// up formatted two different ways.
+  String formatMoney(Money value) => value.format(
+        currencySymbol: currencySymbol,
+        locale: localeCode,
+        compact: numberFormatCompact,
+      );
+
   SettingsState copyWith({
     bool? onboardingComplete,
     String? userName,
@@ -137,6 +173,7 @@ class SettingsState {
     AccentPreset? accent,
     FontChoice? fontChoice,
     InvestmentTreatment? investmentTreatment,
+    String? investmentTreatmentCustomLabel,
     bool? reduceMotion,
     bool? hapticsEnabled,
     bool? appLockEnabled,
@@ -145,6 +182,8 @@ class SettingsState {
     bool? notificationsEnabled,
     bool? paymentRemindersEnabled,
     bool? thresholdAlertsEnabled,
+    int? thresholdQuietStartMinute,
+    int? thresholdQuietEndMinute,
     bool? dailyRecordRemindersEnabled,
     ReminderFrequency? reminderFrequency,
     int? reminderHour,
@@ -171,6 +210,8 @@ class SettingsState {
       accent: accent ?? this.accent,
       fontChoice: fontChoice ?? this.fontChoice,
       investmentTreatment: investmentTreatment ?? this.investmentTreatment,
+      investmentTreatmentCustomLabel:
+          investmentTreatmentCustomLabel ?? this.investmentTreatmentCustomLabel,
       reduceMotion: reduceMotion ?? this.reduceMotion,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       appLockEnabled: appLockEnabled ?? this.appLockEnabled,
@@ -182,6 +223,10 @@ class SettingsState {
           paymentRemindersEnabled ?? this.paymentRemindersEnabled,
       thresholdAlertsEnabled:
           thresholdAlertsEnabled ?? this.thresholdAlertsEnabled,
+      thresholdQuietStartMinute:
+          thresholdQuietStartMinute ?? this.thresholdQuietStartMinute,
+      thresholdQuietEndMinute:
+          thresholdQuietEndMinute ?? this.thresholdQuietEndMinute,
       dailyRecordRemindersEnabled:
           dailyRecordRemindersEnabled ?? this.dailyRecordRemindersEnabled,
       reminderFrequency: reminderFrequency ?? this.reminderFrequency,
@@ -210,6 +255,7 @@ class SettingsState {
         'accent': accent.name,
         'fontChoice': fontChoice.name,
         'investmentTreatment': investmentTreatment.name,
+        'investmentTreatmentCustomLabel': investmentTreatmentCustomLabel,
         'reduceMotion': reduceMotion,
         'hapticsEnabled': hapticsEnabled,
         'appLockEnabled': appLockEnabled,
@@ -218,6 +264,8 @@ class SettingsState {
         'notificationsEnabled': notificationsEnabled,
         'paymentRemindersEnabled': paymentRemindersEnabled,
         'thresholdAlertsEnabled': thresholdAlertsEnabled,
+        'thresholdQuietStartMinute': thresholdQuietStartMinute,
+        'thresholdQuietEndMinute': thresholdQuietEndMinute,
         'dailyRecordRemindersEnabled': dailyRecordRemindersEnabled,
         'reminderFrequency': reminderFrequency.name,
         'reminderHour': reminderHour,
@@ -246,7 +294,8 @@ class SettingsState {
       userEmail: m['userEmail'] as String? ?? '',
       cloudSyncEnabled: m['cloudSyncEnabled'] as bool? ?? false,
       currencyCode: m['currencyCode'] as String? ?? 'INR',
-      currencySymbol: m['currencySymbol'] as String? ?? '₹',
+      currencySymbol:
+          m['currencySymbol'] as String? ?? Money.defaultCurrencySymbol,
       localeCode: m['localeCode'] as String?,
       dateFormat: m['dateFormat'] as String? ?? 'MMM d, y',
       financialMonthStartDay: m['financialMonthStartDay'] as int? ?? 1,
@@ -270,14 +319,22 @@ class SettingsState {
         m['investmentTreatment'],
         InvestmentTreatment.separate,
       ),
+      investmentTreatmentCustomLabel:
+          m['investmentTreatmentCustomLabel'] as String? ?? '',
       reduceMotion: m['reduceMotion'] as bool? ?? false,
       hapticsEnabled: m['hapticsEnabled'] as bool? ?? true,
       appLockEnabled: m['appLockEnabled'] as bool? ?? false,
       biometricEnabled: m['biometricEnabled'] as bool? ?? false,
       screenSecurityEnabled: m['screenSecurityEnabled'] as bool? ?? true,
-      notificationsEnabled: m['notificationsEnabled'] as bool? ?? false,
+      notificationsEnabled: m['notificationsEnabled'] as bool? ?? true,
       paymentRemindersEnabled: m['paymentRemindersEnabled'] as bool? ?? true,
       thresholdAlertsEnabled: m['thresholdAlertsEnabled'] as bool? ?? true,
+      thresholdQuietStartMinute:
+          ((m['thresholdQuietStartMinute'] as num?)?.toInt() ?? 1320)
+              .clamp(0, 1439),
+      thresholdQuietEndMinute:
+          ((m['thresholdQuietEndMinute'] as num?)?.toInt() ?? 420)
+              .clamp(0, 1439),
       dailyRecordRemindersEnabled:
           m['dailyRecordRemindersEnabled'] as bool? ?? true,
       reminderFrequency: pick(
@@ -293,4 +350,12 @@ class SettingsState {
       numberFormatCompact: m['numberFormatCompact'] as bool? ?? false,
     );
   }
+}
+
+/// Screens build their first frame before the settings controller has finished
+/// reading from disk, so `valueOrNull` is briefly null everywhere. Falling back
+/// to the declared defaults keeps that moment consistent instead of letting
+/// each call site invent its own fallback.
+extension SettingsStateOrDefaults on SettingsState? {
+  SettingsState get orDefaults => this ?? const SettingsState();
 }

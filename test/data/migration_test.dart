@@ -37,10 +37,53 @@ void main() {
     expect(names, containsAll(expectedIndexes));
   });
 
-  test('schemaVersion is 4', () {
+  test('schemaVersion is 5', () {
     final db = AppDatabase.forTesting(NativeDatabase.memory());
     addTearDown(db.close);
-    expect(db.schemaVersion, 4);
+    expect(db.schemaVersion, 5);
+  });
+
+  test('fresh database has the v5 loans.show_in_upcoming column', () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.select(db.loans).get(); // force onCreate
+
+    final cols = await db.customSelect("PRAGMA table_info('loans')").get();
+    final names = cols.map((r) => r.read<String>('name')).toSet();
+    expect(names, contains('show_in_upcoming'));
+  });
+
+  test(
+      'v4->v5 ADD COLUMN defaults existing loans to false and keeps their data',
+      () async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+    await db.select(db.loans).get();
+
+    // Simulate a v4 database: drop the new column, then insert a loan the way
+    // an existing user's row would already look.
+    await db.customStatement('ALTER TABLE loans DROP COLUMN show_in_upcoming;');
+    await db.customStatement(
+      "INSERT INTO loans (id, name, original_principal_minor, "
+      "outstanding_principal_minor, emi_minor, interest_rate_bps, frequency, "
+      "start_date, total_paid_minor, created_at, updated_at, sync_status) "
+      "VALUES ('l1', 'Car loan', 1000000, 500000, 15000, 875, 2, 0, 0, 0, 0, 0);",
+    );
+
+    // The exact statement the v4->v5 migration runs.
+    await db.customStatement(
+      'ALTER TABLE loans ADD COLUMN show_in_upcoming INTEGER NOT NULL '
+      'DEFAULT 0 CHECK (show_in_upcoming IN (0, 1));',
+    );
+
+    final row = await db
+        .customSelect('SELECT name, outstanding_principal_minor, '
+            'show_in_upcoming FROM loans')
+        .getSingle();
+    // The opt-in must default to off, and no existing money may be disturbed.
+    expect(row.read<int>('show_in_upcoming'), 0);
+    expect(row.read<String>('name'), 'Car loan');
+    expect(row.read<int>('outstanding_principal_minor'), 500000);
   });
 
   test('fresh database has the v3 transactions.icon_code_point column',

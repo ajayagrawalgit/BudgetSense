@@ -51,7 +51,7 @@ Widget _host(CloudSyncController c) {
 void main() {
   testWidgets('cloud backup toggle defaults to OFF', (tester) async {
     final db = newTestDatabase();
-    addTearDown(db.close);
+    closeTestDatabaseOnTearDown(tester, db);
     final c = _controller(db);
     addTearDown(c.dispose);
     await tester.pumpWidget(_host(c));
@@ -67,7 +67,7 @@ void main() {
   testWidgets('turning the toggle on shows the explainer before any network',
       (tester) async {
     final db = newTestDatabase();
-    addTearDown(db.close);
+    closeTestDatabaseOnTearDown(tester, db);
     final c = _controller(db);
     addTearDown(c.dispose);
     await tester.pumpWidget(_host(c));

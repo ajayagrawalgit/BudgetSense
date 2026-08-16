@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<!-- Launch window for Android 11 and below, where the window background still
+     acts as the splash. Both @color/splash_background and @drawable/splash_mark
+     have -night variants, so this one file covers light and dark: cream paper
+     with the espresso ensō, or espresso paper with the cream ensō.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+     Android 12+ ignores this and draws the system splash screen instead; see
+     values-v31/styles.xml. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background" />
+    <item
+        android:drawable="@drawable/splash_mark"
+        android:gravity="center"
+        android:width="128dp"
+        android:height="128dp" />
 </layer-list>

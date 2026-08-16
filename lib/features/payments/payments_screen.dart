@@ -9,11 +9,13 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/friendly_date.dart';
 import '../../core/utils/money.dart';
-import '../../core/validation/validators.dart';
 import '../../data/seed/default_data.dart';
 import '../../domain/entities/commitment_entities.dart';
+import '../../domain/services/due_items.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import '../settings/settings_controller.dart';
+import 'emi_record_sheet.dart';
 import 'loan_editor_sheet.dart';
 import 'payment_editor_sheet.dart';
 import '../../core/utils/haptics.dart';
@@ -48,26 +50,15 @@ class PaymentsScreen extends ConsumerWidget {
 class _RecurringTab extends ConsumerWidget {
   const _RecurringTab();
 
-  static const months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(recurringPaymentsStreamProvider);
+    // Loans that opted in are listed here too. They are merged as views, never
+    // copied into recurring payments, so an EMI is still settled (and counted)
+    // exactly once. See [buildDueItems].
+    final loans = ref.watch(loansStreamProvider).valueOrNull ?? const [];
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final locale = settings?.localeCode;
 
     return Stack(
@@ -79,7 +70,8 @@ class _RecurringTab extends ConsumerWidget {
             message: '$e',
             icon: Icons.error_outline,
           ),
-          data: (items) {
+          data: (payments) {
+            final items = buildDueItems(payments: payments, loans: loans);
             if (items.isEmpty) {
               return const CalmEmptyState(
                 title: 'No recurring payments yet',
@@ -90,20 +82,20 @@ class _RecurringTab extends ConsumerWidget {
               );
             }
             // Split into what is due through the end of THIS month (the working
-            // list that shrinks as you Mark paid) and everything later (the
-            // collapsible Upcoming section). When a payment is completed its due
-            // date advances past month-end, so it slides out of the list.
+            // list that shrinks as you settle things) and everything later (the
+            // collapsible Upcoming section). Settling an item advances its due
+            // date past month-end, so it slides out of the list.
             final calendar = ref.watch(financialCalendarProvider);
             final now = DateTime.now();
             final monthEnd = calendar.monthRangeFor(now).end;
             final due = [
-              for (final p in items)
-                if (!p.nextDueDate.isAfter(monthEnd)) p,
-            ]..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
+              for (final i in items)
+                if (!i.dueDate.isAfter(monthEnd)) i,
+            ];
             final upcoming = [
-              for (final p in items)
-                if (p.nextDueDate.isAfter(monthEnd)) p,
-            ]..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
+              for (final i in items)
+                if (i.dueDate.isAfter(monthEnd)) i,
+            ];
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(
@@ -114,16 +106,16 @@ class _RecurringTab extends ConsumerWidget {
               ),
               children: [
                 if (due.isEmpty)
-                  _AllCaughtUpCard(month: _RecurringTab.months[now.month - 1])
+                  _AllCaughtUpCard(month: FriendlyDate.monthName(now.month))
                 else
-                  for (final p in due) ...[
-                    _RecurringRow(payment: p, symbol: symbol, locale: locale),
+                  for (final i in due) ...[
+                    _DueRow(item: i, symbol: symbol, locale: locale),
                     const SizedBox(height: Insets.sm),
                   ],
                 if (upcoming.isNotEmpty) ...[
                   const SizedBox(height: Insets.sm),
                   _UpcomingSection(
-                    payments: upcoming,
+                    items: upcoming,
                     symbol: symbol,
                     locale: locale,
                   ),
@@ -187,12 +179,12 @@ class _AllCaughtUpCard extends StatelessWidget {
 /// the month it falls in. Read-only glances: tap a row to edit that payment.
 class _UpcomingSection extends StatelessWidget {
   const _UpcomingSection({
-    required this.payments,
+    required this.items,
     required this.symbol,
     required this.locale,
   });
 
-  final List<RecurringPaymentEntity> payments;
+  final List<DueItem> items;
   final String symbol;
   final String? locale;
 
@@ -202,17 +194,16 @@ class _UpcomingSection extends StatelessWidget {
     final colors = context.colors;
 
     // Group by "Month Year" while preserving the sorted (soonest-first) order.
-    final groups = <String, List<RecurringPaymentEntity>>{};
-    for (final p in payments) {
-      final key =
-          '${_RecurringTab.months[p.nextDueDate.month - 1]} ${p.nextDueDate.year}';
-      groups.putIfAbsent(key, () => []).add(p);
+    final groups = <String, List<DueItem>>{};
+    for (final i in items) {
+      final key = FriendlyDate.monthYear(i.dueDate);
+      groups.putIfAbsent(key, () => []).add(i);
     }
 
     return CollapsibleCard(
       title: 'Upcoming',
       subtitle: Text(
-        '${payments.length}',
+        '${items.length}',
         style: text.labelLarge?.copyWith(color: colors.textFaint),
       ),
       child: Column(
@@ -226,8 +217,8 @@ class _UpcomingSection extends StatelessWidget {
                 style: text.labelMedium?.copyWith(color: colors.textFaint),
               ),
             ),
-            for (final p in entry.value)
-              _UpcomingRow(payment: p, symbol: symbol, locale: locale),
+            for (final i in entry.value)
+              _UpcomingRow(item: i, symbol: symbol, locale: locale),
           ],
         ],
       ),
@@ -235,15 +226,15 @@ class _UpcomingSection extends StatelessWidget {
   }
 }
 
-/// A quiet, read-only glance at a future recurring payment.
+/// A quiet, read-only glance at a future commitment (payment or loan EMI).
 class _UpcomingRow extends StatelessWidget {
   const _UpcomingRow({
-    required this.payment,
+    required this.item,
     required this.symbol,
     required this.locale,
   });
 
-  final RecurringPaymentEntity payment;
+  final DueItem item;
   final String symbol;
   final String? locale;
 
@@ -251,8 +242,24 @@ class _UpcomingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
+
+    // Future items are read-only here: tapping opens the right editor rather
+    // than settling anything. Nothing is ever recorded from this list.
+    final (cadence, amount, onTap) = switch (item) {
+      PaymentDueItem(:final payment) => (
+          payment.frequency.label,
+          payment.amount,
+          () => PaymentEditorSheet.show(context, existing: payment),
+        ),
+      LoanDueItem(:final loan) => (
+          'EMI \u00b7 ${loan.frequency.label}',
+          loan.emi,
+          () => LoanEditorSheet.show(context, existing: loan),
+        ),
+    };
+
     return InkWell(
-      onTap: () => PaymentEditorSheet.show(context, existing: payment),
+      onTap: onTap,
       borderRadius: Corners.sm,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Insets.sm),
@@ -262,22 +269,129 @@ class _UpcomingRow extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(payment.name, style: text.bodyMedium),
+                  Text(item.name, style: text.bodyMedium),
                   const SizedBox(height: 1),
                   Text(
-                    '${payment.frequency.label} \u00b7 due '
-                    '${FriendlyDate.relative(payment.nextDueDate, locale: locale)}',
+                    '$cadence \u00b7 due '
+                    '${FriendlyDate.relative(item.dueDate, locale: locale)}',
                     style: text.bodySmall?.copyWith(color: colors.textFaint),
                   ),
                 ],
               ),
             ),
             Text(
-              payment.amount.format(currencySymbol: symbol, locale: locale),
+              amount.format(currencySymbol: symbol, locale: locale),
               style: text.bodyMedium,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// A due item, rendered for whichever source it came from.
+///
+/// Keeps the branch in exactly one place: a recurring payment offers
+/// "Mark paid", a loan offers "Record EMI" and opens the same sheet the Loans
+/// tab uses, so outstanding balance and repayment progress update identically
+/// wherever it was tapped.
+class _DueRow extends StatelessWidget {
+  const _DueRow({
+    required this.item,
+    required this.symbol,
+    required this.locale,
+  });
+
+  final DueItem item;
+  final String symbol;
+  final String? locale;
+
+  @override
+  Widget build(BuildContext context) {
+    return switch (item) {
+      PaymentDueItem(:final payment) =>
+        _RecurringRow(payment: payment, symbol: symbol, locale: locale),
+      LoanDueItem(:final loan) =>
+        _LoanDueRow(loan: loan, symbol: symbol, locale: locale),
+    };
+  }
+}
+
+/// A loan EMI listed among the recurring commitments. Deliberately mirrors
+/// [_RecurringRow]'s shape so the list reads as one thing, with the loan's own
+/// affordances: it opens the loan editor, and settles via the EMI sheet.
+class _LoanDueRow extends StatelessWidget {
+  const _LoanDueRow({
+    required this.loan,
+    required this.symbol,
+    required this.locale,
+  });
+
+  final LoanEntity loan;
+  final String symbol;
+  final String? locale;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = context.colors;
+    final due = loan.nextPaymentDate!;
+    final overdue = due.isBefore(DateTime.now());
+
+    return CalmCard(
+      onTap: () => LoanEditorSheet.show(context, existing: loan),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(loan.name, style: text.titleSmall),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(
+                      overdue ? Icons.error_outline : Icons.account_balance,
+                      size: 13,
+                      color: overdue ? colors.critical : colors.textFaint,
+                    ),
+                    const SizedBox(width: Insets.xs),
+                    Text(
+                      'EMI · ${loan.frequency.label}',
+                      style: text.bodySmall,
+                    ),
+                  ],
+                ),
+                Text(
+                  '${overdue ? 'Overdue' : 'Due'} '
+                  '${FriendlyDate.relative(due, locale: locale)}',
+                  style: text.bodySmall?.copyWith(
+                    color: overdue ? colors.critical : colors.textFaint,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                loan.emi.format(currencySymbol: symbol, locale: locale),
+                style: text.titleSmall,
+              ),
+              const SizedBox(height: Insets.xs),
+              TextButton(
+                onPressed: () => EmiRecordSheet.show(context, loan: loan),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+                  minimumSize: const Size(0, 32),
+                ),
+                child: const Text('Record EMI'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -361,9 +475,14 @@ class _RecurringRow extends ConsumerWidget {
 
   Future<void> _markComplete(BuildContext context, WidgetRef ref) async {
     final service = ref.read(recurrenceServiceProvider);
+    // Record the payment/investment against the day the user actually marks it
+    // paid, not its scheduled due date. This is correct whether they pay early
+    // or clear an overdue one. The schedule's next due date still advances on
+    // its planned cadence (handled inside complete()).
     final result = service.complete(
       payment,
       newTransactionId: DefaultDataSeeder.newId(),
+      paidAt: DateTime.now(),
     );
     if (result.transaction != null) {
       await ref.read(transactionRepositoryProvider).upsert(result.transaction!);
@@ -371,14 +490,10 @@ class _RecurringRow extends ConsumerWidget {
     await ref.read(recurringPaymentRepositoryProvider).upsert(result.updated);
     Haptics.confirm();
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.transaction != null
-              ? '${payment.name} paid & recorded'
-              : '${payment.name} marked paid',
-        ),
-      ),
+    context.showMessage(
+      result.transaction != null
+          ? '${payment.name} paid & recorded'
+          : '${payment.name} marked paid',
     );
   }
 }
@@ -390,7 +505,7 @@ class _LoansTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(loansStreamProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final locale = settings?.localeCode;
 
     return Stack(
@@ -409,7 +524,7 @@ class _LoansTab extends ConsumerWidget {
                 message: 'Add a loan to track EMIs, outstanding balance and '
                     'repayment progress.',
                 icon: Icons.account_balance_outlined,
-                illustration: CalmIllustration.coin,
+                illustration: CalmIllustration.sprig,
               );
             }
             return ListView.separated(
@@ -458,19 +573,10 @@ class _LoanRow extends ConsumerStatefulWidget {
 
 class _LoanRowState extends ConsumerState<_LoanRow> {
   bool _expanded = false;
-  bool _recording = false;
-  final _amount = TextEditingController();
-  DateTime _paidAt = DateTime.now();
 
   LoanEntity get loan => widget.loan;
   String get symbol => widget.symbol;
   String? get locale => widget.locale;
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -548,8 +654,6 @@ class _LoanRowState extends ConsumerState<_LoanRow> {
 
   Widget _panel(BuildContext context, TextTheme text, AppColors colors) {
     final lastEmi = ref.watch(lastLoanPaymentProvider(loan.id));
-    final paidLabel =
-        '${FriendlyDate.short(_paidAt, locale: locale)} at ${TimeOfDay.fromDateTime(_paidAt).format(context)}';
 
     return Padding(
       padding: const EdgeInsets.only(top: Insets.md),
@@ -590,33 +694,15 @@ class _LoanRowState extends ConsumerState<_LoanRow> {
           ),
           const SizedBox(height: Insets.md),
 
-          // Custom amount (blank = use the EMI).
-          TextFormField(
-            controller: _amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: 'Custom amount (optional)',
-              hintText:
-                  'Defaults to EMI ${loan.emi.format(currencySymbol: symbol, locale: locale)}',
-              prefixText: '$symbol ',
-            ),
-          ),
-          const SizedBox(height: Insets.sm),
-
-          // When it was paid (defaults to now).
-          OutlinedButton.icon(
-            onPressed: _recording ? null : _pickDateTime,
-            icon: const Icon(Icons.schedule, size: 16),
-            label: Text('Paid on $paidLabel'),
-          ),
-          const SizedBox(height: Insets.md),
-
+          // Settling happens in the shared EMI sheet, the same one the
+          // recurring due list opens, so there is exactly one way to record an
+          // EMI no matter where you started from.
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _recording ? null : _record,
+              onPressed: () => EmiRecordSheet.show(context, loan: loan),
               icon: const Icon(Icons.check, size: 18),
-              label: Text(_recording ? 'Recording…' : 'Record EMI'),
+              label: const Text('Record EMI'),
             ),
           ),
           const SizedBox(height: Insets.xs),
@@ -628,73 +714,6 @@ class _LoanRowState extends ConsumerState<_LoanRow> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Future<void> _pickDateTime() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _paidAt,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (date == null || !mounted) return;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_paidAt),
-    );
-    if (!mounted) return;
-    setState(() {
-      _paidAt = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time?.hour ?? _paidAt.hour,
-        time?.minute ?? _paidAt.minute,
-      );
-    });
-  }
-
-  Future<void> _record() async {
-    // Parse the optional custom amount; blank means "use the EMI".
-    Money? custom;
-    final raw = _amount.text.trim();
-    if (raw.isNotEmpty) {
-      final err = Validators.amount(raw, locale: locale);
-      if (err != null) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(err)));
-        return;
-      }
-      custom = Money.tryParse(raw, locale: locale);
-    }
-
-    setState(() => _recording = true);
-    final service = ref.read(recurrenceServiceProvider);
-    final result = service.payLoan(
-      loan,
-      newTransactionId: DefaultDataSeeder.newId(),
-      amount: custom,
-      paidAt: _paidAt,
-    );
-    await ref.read(transactionRepositoryProvider).upsert(result.transaction);
-    await ref.read(loanRepositoryProvider).upsert(result.updated);
-    ref.invalidate(lastLoanPaymentProvider(loan.id));
-    Haptics.confirm();
-    if (!mounted) return;
-    _amount.clear();
-    setState(() {
-      _recording = false;
-      _paidAt = DateTime.now();
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'EMI of '
-          '${result.transaction.amount.format(currencySymbol: symbol, locale: locale)}'
-          ' recorded for ${loan.name}',
-        ),
       ),
     );
   }

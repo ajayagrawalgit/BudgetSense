@@ -2,11 +2,10 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../../core/theme/theme_resolver.dart';
 import 'brand_watermark.dart';
 
 /// The flavour of a one-shot celebration. All are dependency-free, painted with
-/// a [CustomPainter], and no-ops under reduce-motion.
+/// a [CustomPainter].
 enum ConfettiVariant {
   /// Classic paper confetti in the calm palette.
   confetti,
@@ -27,17 +26,19 @@ enum ConfettiVariant {
 /// Insert it with [ConfettiOverlay.shower]: it drops a single root [Overlay]
 /// entry that covers the ENTIRE screen (above the nav bar and everything else),
 /// plays once, and removes itself when the animation finishes. It is wrapped in
-/// an [IgnorePointer] so it never eats a tap, and it honours reduce-motion by
-/// doing nothing at all when animations are disabled.
+/// an [IgnorePointer] so it never eats a tap.
+///
+/// Deliberately NOT gated behind reduce-motion: this only ever fires from an
+/// explicit, deliberate user gesture (double-tapping the all-clear card), it
+/// is not ambient or looping motion, and it is the entire payoff of that
+/// easter egg. Easter eggs should behave the same for every user regardless
+/// of their settings, so this always plays.
 abstract final class ConfettiOverlay {
   static void shower(
     BuildContext context, {
     ConfettiVariant variant = ConfettiVariant.confetti,
     int? pieces,
   }) {
-    // Respect the user's reduce-motion preference: no surprise motion.
-    if (context.reduceMotion) return;
-
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 

@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The single BudgetSense launcher icon: the ensō brand mark (crisp raster
-     foreground, safe-zoned) on warm cream paper. -->
+<!-- The BudgetSense launcher icon: the ensō brush ring with its terracotta dot,
+     safe-zoned on warm cream paper. The monochrome layer is a flat silhouette of
+     the same ring, which is what Android 13+ tints for themed icons. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>

@@ -19,11 +19,18 @@ notification preferences, export records) **plus all settings and profile**
 
 ## Restore (import a snapshot)
 
-- Restoring a snapshot **fully replaces settings** (so theme/icon update
-  immediately) and **upserts all data**.
+- Restore is **non-destructive and append-only**. It never updates, replaces,
+  or deletes an existing local record. New records are inserted, an id
+  collision with different content is remapped to a new local record instead of
+  overwriting, and a changed source record is appended as a new version. See
+  `backup/RESTORE_CONFLICT_POLICY.md` for the exact rules.
+- Settings and profile are **merged, not replaced**: an existing local value is
+  kept by default, and a backed-up value is only applied automatically when the
+  local value is uninitialized. You can explicitly choose to apply other values
+  from the restore preview.
 - Import is defensive: corrupted, oversized, partially valid, wrong-format, or
-  unknown/future-version files are rejected or handled safely rather than
-  corrupting the live database.
+  unknown/future-version files are rejected before any write, causing zero
+  mutations rather than corrupting the live database.
 - After a restore, all data providers are invalidated in one shot so every
   screen reflects the restored data without an app restart.
 

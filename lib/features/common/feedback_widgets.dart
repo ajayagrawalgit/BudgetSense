@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -254,6 +255,80 @@ class _BreathingPulseState extends State<BreathingPulse>
         );
       },
       child: widget.child,
+    );
+  }
+}
+
+/// One firefly's swell at a point in its cycle: bright, then almost out, and
+/// never quite the same way twice.
+///
+/// [clock] loops 0..1. [phase] shifts one insect against the next so a cluster
+/// never blinks in unison. The two sines beat against each other, which is what
+/// keeps the glow from reading as a machine blinking on a timer.
+double fireflyGlow(double clock, {double phase = 0}) {
+  final x = (clock + phase) % 1.0;
+  final swell = math.sin(x * 2 * math.pi);
+  final flicker = math.sin(x * 6 * math.pi + 1.1);
+  return (0.46 + 0.36 * swell + 0.12 * flicker).clamp(0.0, 1.0);
+}
+
+/// Drives a slow firefly glow for whatever [builder] paints.
+///
+/// The builder is handed a looping 0..1 clock to feed [fireflyGlow], or null
+/// when nothing should glow: either [enabled] is false, or the reader asked for
+/// reduced motion, and something blinking at the edge of vision is exactly the
+/// kind of ambient movement that setting exists to stop.
+class FireflyPulse extends StatefulWidget {
+  const FireflyPulse({
+    required this.builder,
+    this.enabled = true,
+    this.period = const Duration(milliseconds: 3600),
+    super.key,
+  });
+
+  final Widget Function(BuildContext context, double? clock) builder;
+  final bool enabled;
+  final Duration period;
+
+  @override
+  State<FireflyPulse> createState() => _FireflyPulseState();
+}
+
+class _FireflyPulseState extends State<FireflyPulse>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.period,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _sync(bool animate) {
+    if (animate) {
+      if (!_controller.isAnimating) _controller.repeat();
+    } else {
+      _controller
+        ..stop()
+        ..value = 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final animate = widget.enabled && !context.reduceMotion;
+    // Reconcile after the frame so we never call repeat() during build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sync(animate);
+    });
+    if (!animate) return widget.builder(context, null);
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => widget.builder(context, _controller.value),
     );
   }
 }

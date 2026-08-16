@@ -1,0 +1,169 @@
+00:00 +0: loading <REPO_ROOT>/test/core/reminder_schedule_test.dart
+00:00 +0: <REPO_ROOT>/test/core/reminder_schedule_test.dart: daily first occurrence is today when the time is still ahead
+00:00 +1: <REPO_ROOT>/test/core/reminder_schedule_test.dart: daily first occurrence rolls to tomorrow when the time has passed
+00:00 +2: <REPO_ROOT>/test/core/reminder_schedule_test.dart: daily returns exactly count occurrences, strictly increasing
+00:00 +3: <REPO_ROOT>/test/core/reminder_schedule_test.dart: weekly all occurrences fall on the chosen weekday, 7 days apart
+00:00 +4: <REPO_ROOT>/test/core/reminder_schedule_test.dart: monthly fires on the chosen day each month, advancing the month
+00:00 +5: <REPO_ROOT>/test/core/reminder_schedule_test.dart: monthly day is clamped to 28 so it exists in February
+00:00 +6: <REPO_ROOT>/test/core/reminder_schedule_test.dart: monthly rolls across a year boundary
+00:00 +7: <REPO_ROOT>/test/core/reminder_schedule_test.dart: describe reads like a human sentence
+00:00 +8: loading <REPO_ROOT>/test/core/theme_performance_test.dart
+00:00 +8: <REPO_ROOT>/test/core/theme_performance_test.dart: AppColors equality two identically-built palettes are equal
+00:00 +9: <REPO_ROOT>/test/core/theme_performance_test.dart: AppColors equality a different accent is a different palette
+00:00 +10: <REPO_ROOT>/test/core/theme_performance_test.dart: AppColors equality light and dark are never mistaken for each other
+00:00 +11: <REPO_ROOT>/test/core/theme_performance_test.dart: AppColors equality glass tracks whether blur is actually supported
+00:00 +12: <REPO_ROOT>/test/core/theme_performance_test.dart: ThemeResolver.resolvePair identical inputs return the identical ThemeData instances
+00:00 +13: <REPO_ROOT>/test/core/theme_performance_test.dart: ThemeResolver.resolvePair changing the font produces a new theme
+00:00 +14: <REPO_ROOT>/test/core/theme_performance_test.dart: ThemeResolver.resolvePair changing the accent produces a new theme
+00:00 +15: <REPO_ROOT>/test/core/theme_performance_test.dart: ThemeResolver.resolvePair each variant maps to the mode it claims
+00:00 +16: <REPO_ROOT>/test/core/theme_performance_test.dart: ThemeResolver.resolvePair single-brightness variants share one theme for light and dark
+00:00 +17: <REPO_ROOT>/test/core/theme_performance_test.dart: ThemeResolver.resolvePair the palette survives the round trip into the theme extension
+00:00 +18: loading <REPO_ROOT>/test/core/category_icons_test.dart
+00:00 +18: <REPO_ROOT>/test/core/category_icons_test.dart: categoryIcon resolves a known code point to its const IconData
+00:00 +19: <REPO_ROOT>/test/core/category_icons_test.dart: categoryIcon falls back for an unknown code point
+00:00 +20: <REPO_ROOT>/test/core/category_icons_test.dart: the first twelve icons are pinned in order (seed-data contract)
+00:00 +21: <REPO_ROOT>/test/core/category_icons_test.dart: every icon code point is unique so lookups are deterministic
+00:00 +22: loading <REPO_ROOT>/test/core/financial_calendar_test.dart
+00:01 +22: <REPO_ROOT>/test/core/financial_calendar_test.dart: FinancialCalendar (start day 1) month range spans the whole calendar month
+00:01 +23: <REPO_ROOT>/test/core/financial_calendar_test.dart: FinancialCalendar (start day 1) monthKey is stable
+00:01 +24: <REPO_ROOT>/test/core/financial_calendar_test.dart: FinancialCalendar (start day 15) date after anchor belongs to current financial month
+00:01 +25: <REPO_ROOT>/test/core/financial_calendar_test.dart: FinancialCalendar (start day 15) date before anchor rolls into previous financial month
+00:01 +26: <REPO_ROOT>/test/core/financial_calendar_test.dart: nextOccurrence anchoring (schedule drift) a payment on the 31st returns to the 31st after February
+00:01 +27: <REPO_ROOT>/test/core/financial_calendar_test.dart: nextOccurrence anchoring (schedule drift) a payment on the 30th survives February
+00:01 +28: <REPO_ROOT>/test/core/financial_calendar_test.dart: nextOccurrence anchoring (schedule drift) quarterly and yearly anchor too
+00:01 +29: <REPO_ROOT>/test/core/financial_calendar_test.dart: nextOccurrence anchoring (schedule drift) without an anchor the old clamped day is kept (no surprise jumps)
+00:01 +30: <REPO_ROOT>/test/core/financial_calendar_test.dart: nextOccurrence advances by frequency
+00:01 +31: <REPO_ROOT>/test/core/financial_calendar_test.dart: nextOccurrence custom interval uses provided days
+00:01 +32: loading <REPO_ROOT>/test/core/app_fonts_test.dart
+00:01 +32: <REPO_ROOT>/test/core/app_fonts_test.dart: FontChoice system uses the platform default (no bundled family)
+00:01 +33: <REPO_ROOT>/test/core/app_fonts_test.dart: FontChoice every non-system choice maps to a bundled family
+00:01 +34: <REPO_ROOT>/test/core/app_fonts_test.dart: FontChoice handwritten faces are scaled up for readability
+00:01 +35: <REPO_ROOT>/test/core/app_fonts_test.dart: FontChoice labels and descriptions are non-empty for all choices
+00:01 +36: <REPO_ROOT>/test/core/app_fonts_test.dart: FontChoice font families are unique
+00:01 +37: <REPO_ROOT>/test/core/app_fonts_test.dart: FontChoice the preview shows a real amount in the app currency symbol
+00:01 +38: loading <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart
+00:02 +38: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: normalizeForSearch folds case and punctuation so spelling variants agree
+00:02 +39: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: two characters already narrow things down "th" surfaces Theme and Thresholds
+00:02 +40: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: two characters already narrow things down "no" finds Notifications
+00:02 +41: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: two characters already narrow things down "cu" finds Currency symbol and Custom fields
+00:02 +42: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: initials "cs" finds Cloud sync
+00:02 +43: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: initials "hf" finds Haptic feedback
+00:02 +44: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: every word has to match, so extra words narrow the results "dark theme" finds Theme
+00:02 +45: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: every word has to match, so extra words narrow the results order of the words does not matter
+00:02 +46: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: every word has to match, so extra words narrow the results adding an unrelated word removes the result
+00:02 +47: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: near misses still land dropped letters still find the setting
+00:02 +48: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: near misses still land a mid-word fragment works
+00:02 +49: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: near misses still land matching on the section name works
+00:02 +50: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: ranking an exact label wins over a keyword mention
+00:02 +51: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: ranking a full word beats a loose subsequence
+00:02 +52: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: short queries stay focused a two-letter query does not drag in most of the index
+00:02 +53: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: short queries stay focused the intended setting is still first
+00:02 +54: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: gapped matches prefer the tighter, word-aligned hit "bak" finds Cloud sync's backup ahead of Haptic feedback
+00:02 +55: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: nothing to match gibberish returns nothing rather than everything
+00:02 +56: <REPO_ROOT>/test/core/utils/fuzzy_search_test.dart: nothing to match an empty or symbol-only query returns nothing
+00:02 +57: loading <REPO_ROOT>/test/core/widget_service_test.dart
+00:02 +57: <REPO_ROOT>/test/core/widget_service_test.dart: updateData no-ops off Android without throwing
+00:02 +58: <REPO_ROOT>/test/core/widget_service_test.dart: consumeLaunchAction returns null off Android
+00:02 +59: <REPO_ROOT>/test/core/widget_service_test.dart: setActionListener is a safe no-op off Android
+00:02 +60: loading <REPO_ROOT>/test/core/font_licenses_test.dart
+00:02 +60: <REPO_ROOT>/test/core/font_licenses_test.dart: bundled font licence asset carries the OFL and every copyright line
+00:02 +61: loading <REPO_ROOT>/test/core/friendly_date_test.dart
+00:03 +61: <REPO_ROOT>/test/core/friendly_date_test.dart: FriendlyDate.relative names the days around now
+00:03 +62: <REPO_ROOT>/test/core/friendly_date_test.dart: FriendlyDate.relative ignores the time of day when comparing calendar days
+00:03 +63: <REPO_ROOT>/test/core/friendly_date_test.dart: FriendlyDate.relative falls back to the short form for other days
+00:03 +64: <REPO_ROOT>/test/core/friendly_date_test.dart: FriendlyDate.short omits the year within the current year
+00:03 +65: <REPO_ROOT>/test/core/friendly_date_test.dart: FriendlyDate.short includes the year for other years
+00:03 +66: <REPO_ROOT>/test/core/friendly_date_test.dart: grouping-key safety distinct calendar days never collide
+00:03 +67: <REPO_ROOT>/test/core/friendly_date_test.dart: month names names every month from its 1-based number
+00:03 +68: <REPO_ROOT>/test/core/friendly_date_test.dart: month names monthYear reads as a heading
+00:03 +69: <REPO_ROOT>/test/core/friendly_date_test.dart: month names an uninitialized locale falls back instead of throwing
+00:03 +70: <REPO_ROOT>/test/core/friendly_date_test.dart: locale safety an uninitialized locale falls back instead of throwing
+00:03 +71: loading <REPO_ROOT>/test/core/money_test.dart
+00:03 +71: <REPO_ROOT>/test/core/money_test.dart: Money stores exact minor units without float drift
+00:03 +72: <REPO_ROOT>/test/core/money_test.dart: Money fromMajor rounds to nearest minor unit
+00:03 +73: <REPO_ROOT>/test/core/money_test.dart: Money tryParse handles plain decimals
+00:03 +74: <REPO_ROOT>/test/core/money_test.dart: Money tryParse rejects garbage
+00:03 +75: <REPO_ROOT>/test/core/money_test.dart: Money tryParse rejects amounts with more precision than the currency
+00:03 +76: <REPO_ROOT>/test/core/money_test.dart: Money tryParse still accepts every legitimate amount
+00:03 +77: <REPO_ROOT>/test/core/money_test.dart: Money tryParse rejects negative input
+00:03 +78: <REPO_ROOT>/test/core/money_test.dart: Money tryParse handles Indian lakh grouping
+00:03 +79: <REPO_ROOT>/test/core/money_test.dart: Money summing many amounts never drifts
+00:03 +80: <REPO_ROOT>/test/core/money_test.dart: Money arithmetic operators
+00:03 +81: <REPO_ROOT>/test/core/money_test.dart: Money percentOf and ratioOf are divide-by-zero safe
+00:03 +82: <REPO_ROOT>/test/core/money_test.dart: Money sumMoney of empty is zero
+00:03 +83: <REPO_ROOT>/test/core/money_test.dart: Money formats with currency symbol
+00:03 +84: <REPO_ROOT>/test/core/money_test.dart: Money compact flag switches to abbreviated form
+00:03 +85: loading <REPO_ROOT>/test/core/haptics_test.dart
+00:04 +85: <REPO_ROOT>/test/core/haptics_test.dart: disabled: no haptic reaches the platform
+00:04 +86: <REPO_ROOT>/test/core/haptics_test.dart: enabled: each semantic call fires exactly one platform vibrate
+00:04 +87: loading <REPO_ROOT>/test/core/icon_suggester_test.dart
+00:04 +87: <REPO_ROOT>/test/core/icon_suggester_test.dart: empty / whitespace input suggests nothing
+00:04 +88: <REPO_ROOT>/test/core/icon_suggester_test.dart: detects common Indian expense keywords
+00:04 +89: <REPO_ROOT>/test/core/icon_suggester_test.dart: every suggested code point resolves to a real library icon
+00:04 +90: <REPO_ROOT>/test/core/icon_suggester_test.dart: searchCodePoints returns in-library matches and empty for no match
+00:04 +91: <REPO_ROOT>/test/core/icon_suggester_test.dart: the icon library exposes at least 100 distinct icons
+00:04 +92: loading <REPO_ROOT>/test/core/reminder_messages_test.dart
+00:04 +92: <REPO_ROOT>/test/core/reminder_messages_test.dart: there are 100+ reminder messages
+00:04 +93: <REPO_ROOT>/test/core/reminder_messages_test.dart: there are several rotating titles
+00:04 +94: <REPO_ROOT>/test/core/reminder_messages_test.dart: every message and title is trimmed and non-empty
+00:04 +95: <REPO_ROOT>/test/core/reminder_messages_test.dart: no em dashes, en dashes, or spaced-hyphen dashes anywhere
+00:04 +96: <REPO_ROOT>/test/core/reminder_messages_test.dart: most messages carry an emoji
+00:04 +97: <REPO_ROOT>/test/core/reminder_messages_test.dart: messages are short enough for a lock screen
+00:04 +98: loading <REPO_ROOT>/test/app/providers_wiring_test.dart
+00:05 +98: <REPO_ROOT>/test/app/providers_wiring_test.dart: core repositories resolve to their Drift implementations and share one database
+00:05 +99: <REPO_ROOT>/test/app/providers_wiring_test.dart: feature repositories resolve to their Drift implementations
+00:05 +100: <REPO_ROOT>/test/app/providers_wiring_test.dart: service providers are constructible
+00:05 +101: <REPO_ROOT>/test/app/providers_wiring_test.dart: financial calendar derives from settings (defaults to day 1)
+00:05 +102: <REPO_ROOT>/test/app/providers_wiring_test.dart: all database-backed streams emit an initial (empty) value
+00:05 +103: <REPO_ROOT>/test/app/providers_wiring_test.dart: derived providers compute over empty data without throwing
+00:05 +104: loading <REPO_ROOT>/test/app/catch_up_recurring_test.dart
+00:05 +104: <REPO_ROOT>/test/app/catch_up_recurring_test.dart: launch roll-forward posts NO transaction even when auto-add is on
+00:06 +105: <REPO_ROOT>/test/app/catch_up_recurring_test.dart: launch roll-forward posts nothing for manual payments either
+00:06 +106: <REPO_ROOT>/test/app/catch_up_recurring_test.dart: roll-forward is idempotent and refresh helper stays safe
+00:06 +107: loading <REPO_ROOT>/test/app/reschedule_payment_reminders_test.dart
+00:06 +107: <REPO_ROOT>/test/app/reschedule_payment_reminders_test.dart: schedules an alert for a due payment when enabled
+00:06 +108: <REPO_ROOT>/test/app/reschedule_payment_reminders_test.dart: cancels a reminder once its payment stops qualifying (e.g. reminder turned off)
+00:06 +109: <REPO_ROOT>/test/app/reschedule_payment_reminders_test.dart: is a no-op (and clears anything pending) when notifications are disabled
+00:06 +110: loading <REPO_ROOT>/test/widget/calm_widgets_test.dart
+00:07 +110: <REPO_ROOT>/test/widget/calm_widgets_test.dart: StatTile shows label and value
+00:07 +111: <REPO_ROOT>/test/widget/calm_widgets_test.dart: CalmEmptyState renders title and message
+00:07 +112: <REPO_ROOT>/test/widget/calm_widgets_test.dart: CalmCard renders its child
+00:07 +113: <REPO_ROOT>/test/widget/calm_widgets_test.dart: CalmProgressBar clamps overflow without throwing
+00:07 +114: <REPO_ROOT>/test/widget/calm_widgets_test.dart: every CalmIllustration motif paints without throwing
+00:07 +115: <REPO_ROOT>/test/widget/calm_widgets_test.dart: BrandWatermark shows its child and never blocks taps
+00:07 +116: loading <REPO_ROOT>/test/features/easter_eggs_test.dart
+00:07 +116: <REPO_ROOT>/test/features/easter_eggs_test.dart: settingsEggFor answers the three words it knows
+00:07 +117: <REPO_ROOT>/test/features/easter_eggs_test.dart: settingsEggFor is not fussy about case, spacing or the macron
+00:07 +118: <REPO_ROOT>/test/features/easter_eggs_test.dart: settingsEggFor ignores anything that is only on its way to a trigger
+00:07 +119: <REPO_ROOT>/test/features/easter_eggs_test.dart: settingsEggFor leaves genuine searches alone
+00:07 +120: <REPO_ROOT>/test/features/easter_eggs_test.dart: SettingsEggCard enso brushes a ring
+00:08 +121: <REPO_ROOT>/test/features/easter_eggs_test.dart: SettingsEggCard zen draws a line of ink and nothing else
+00:08 +122: <REPO_ROOT>/test/features/easter_eggs_test.dart: SettingsEggCard budgetsense presses the seal over the tagline
+00:08 +123: <REPO_ROOT>/test/features/easter_eggs_test.dart: SealableSummary a closed month can be sealed, and the seal lifts away
+00:08 +124: <REPO_ROOT>/test/features/easter_eggs_test.dart: SealableSummary a month still in progress cannot be sealed
+00:08 +125: <REPO_ROOT>/test/features/easter_eggs_test.dart: SealableSummary adds no gesture at all to an open month
+00:08 +126: <REPO_ROOT>/test/features/easter_eggs_test.dart: the Settings search box answers an egg without hiding the real settings
+00:08 +127: <REPO_ROOT>/test/features/easter_eggs_test.dart: the Settings search box an egg with no matching settings is still answered
+00:08 +128: <REPO_ROOT>/test/features/easter_eggs_test.dart: the Settings search box an ordinary search is untouched
+00:08 +129: <REPO_ROOT>/test/features/easter_eggs_test.dart: tap the version seven times seven taps redraw the mark as an enso
+00:08 +130: <REPO_ROOT>/test/features/easter_eggs_test.dart: tap the version seven times six taps reveal nothing
+00:08 +131: <REPO_ROOT>/test/features/easter_eggs_test.dart: tap the version seven times taps stop counting once you pause
+00:08 +132: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple a deliberate over-pull sends one wave across
+00:08 +133: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple a shallow pull is left alone
+00:08 +134: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple ordinary scrolling never triggers it
+00:09 +135: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple one wave per drag, however long you lean on it
+00:09 +136: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple the tally resets, so a second pull works too
+00:09 +137: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple two shallow pulls do not add up into one
+00:09 +138: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple pulling up past the bottom does nothing
+00:09 +139: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple the list still scrolls while the wave is crossing
+00:09 +140: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple reduce-motion still gets the wave
+00:09 +141: <REPO_ROOT>/test/features/easter_eggs_test.dart: OverPullRipple a wave in flight is dropped cleanly when the page goes away
+00:09 +142: loading <REPO_ROOT>/test/features/settings/threshold_editor_screen_test.dart
+00:09 +142: <REPO_ROOT>/test/features/settings/threshold_editor_screen_test.dart: with no rules the user is told what thresholds are for
+01:38 +142 -1: loading <REPO_ROOT>/test/features/settings/threshold_editor_screen_test.dart [E]
+  Bad state: Cannot close sink while adding stream.
+  package:stream_channel/src/guarantee_channel.dart 180:7      _GuaranteeSink.close
+  package:flutter_tools/src/test/flutter_platform.dart 766:43  FlutterPlatform._startTest
+  
+One or more uncaught errors occurred shutting down:
+  Bad state: Cannot add event while adding stream.

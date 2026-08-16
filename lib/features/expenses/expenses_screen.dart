@@ -8,8 +8,10 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/category_icons.dart';
 import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/friendly_date.dart';
+import '../../core/utils/money.dart';
 import '../../data/seed/default_data.dart';
 import '../../domain/entities/transaction_entity.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import '../quick_add/quick_add_sheet.dart';
 import '../settings/settings_controller.dart';
@@ -61,7 +63,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
   Widget build(BuildContext context) {
     final txnsAsync = ref.watch(monthTransactionsProvider);
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
     final locale = settings?.localeCode;
 
     return Scaffold(
@@ -71,6 +73,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
           if (_selecting)
             IconButton(
               icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete selected',
               onPressed: () => _bulkDelete(txnsAsync.valueOrNull ?? const []),
             )
           else ...[
@@ -160,7 +163,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
                       message:
                           'Add your first transaction with the + button below.',
                       icon: Icons.receipt_long_outlined,
-                      illustration: CalmIllustration.wallet,
+                      illustration: CalmIllustration.journal,
                     );
                   }
                   return _groupByDate
@@ -273,21 +276,7 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
         );
         await repo.upsert(dupe);
       case 'archive':
-        await repo.archive(txn.id);
-        Haptics.confirm();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context)
-          ..clearSnackBars()
-          ..showSnackBar(
-            SnackBar(
-              content: Text('Moved "${txn.name}" to Trash'),
-              duration: const Duration(seconds: 10),
-              action: SnackBarAction(
-                label: 'Undo',
-                onPressed: () => repo.unarchive(txn.id),
-              ),
-            ),
-          );
+        await _deleteWithUndo(txn);
     }
   }
 
@@ -303,22 +292,14 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     Haptics.impact();
     setState(_selected.clear);
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Moved ${removed.length} to Trash'),
-          duration: const Duration(seconds: 10),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () {
-              for (final t in removed) {
-                repo.unarchive(t.id);
-              }
-            },
-          ),
-        ),
-      );
+    context.showUndoMessage(
+      'Moved ${removed.length} to Trash',
+      onUndo: () {
+        for (final t in removed) {
+          repo.unarchive(t.id);
+        }
+      },
+    );
   }
 
   Future<void> _deleteWithUndo(TransactionEntity txn) async {
@@ -328,18 +309,10 @@ class _ExpensesScreenState extends ConsumerState<ExpensesScreen> {
     await repo.archive(txn.id);
     Haptics.confirm();
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Moved "${txn.name}" to Trash'),
-          duration: const Duration(seconds: 10),
-          action: SnackBarAction(
-            label: 'Undo',
-            onPressed: () => repo.unarchive(txn.id),
-          ),
-        ),
-      );
+    context.showUndoMessage(
+      'Moved "${txn.name}" to Trash',
+      onUndo: () => repo.unarchive(txn.id),
+    );
   }
 
   String _dayKey(DateTime d, String? locale) =>
@@ -437,6 +410,11 @@ class _TransactionRow extends ConsumerWidget {
     final colors = context.colors;
     final amountColor = txn.isOutflow ? colors.negative : colors.positive;
     final prefix = txn.isOutflow ? '-' : '+';
+    final compact = ref
+            .watch(settingsControllerProvider)
+            .valueOrNull
+            ?.numberFormatCompact ??
+        false;
 
     // Resolve the row icon: the transaction's own icon wins, else its
     // category's icon, else a neutral fallback. Colour follows the category.
@@ -495,7 +473,7 @@ class _TransactionRow extends ConsumerWidget {
               ),
             ),
             Text(
-              '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale)}',
+              '$prefix${txn.amount.format(currencySymbol: symbol, locale: locale, compact: compact)}',
               style: theme.titleSmall?.copyWith(color: amountColor),
             ),
             if (!selecting)

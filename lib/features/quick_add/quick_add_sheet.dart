@@ -250,7 +250,7 @@ class _QuickAddSheetState extends ConsumerState<QuickAddSheet> {
 
     final settings = ref.watch(settingsControllerProvider).valueOrNull;
     final categoriesAsync = ref.watch(categoriesStreamProvider);
-    final symbol = settings?.currencySymbol ?? '₹';
+    final symbol = settings?.currencySymbol ?? Money.defaultCurrencySymbol;
 
     return SafeArea(
       child: Padding(

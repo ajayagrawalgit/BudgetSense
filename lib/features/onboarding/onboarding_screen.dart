@@ -8,7 +8,9 @@ import '../../core/constants/app_info.dart';
 import '../../core/constants/branding.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/theme_resolver.dart';
+import '../../core/utils/money.dart';
 import '../../data/seed/default_data.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import '../settings/settings_controller.dart';
 
@@ -30,7 +32,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _ageCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _currencyCtrl = TextEditingController(text: '₹');
+  final _currencyCtrl =
+      TextEditingController(text: Money.defaultCurrencySymbol);
   int _monthStartDay = 1;
   bool _seedDefaults = true;
   final bool _cloudSync = false;
@@ -68,7 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             userEmail: _emailCtrl.text.trim(),
             cloudSyncEnabled: _cloudSync,
             currencySymbol: _currencyCtrl.text.trim().isEmpty
-                ? '₹'
+                ? Money.defaultCurrencySymbol
                 : _currencyCtrl.text.trim(),
             financialMonthStartDay: _monthStartDay,
           ),
@@ -89,26 +92,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         await DefaultDataSeeder(ref.read(databaseProvider)).seedIfEmpty();
       }
 
+      // Ask for notification permission once, right here at the end of first
+      // run, same spot most apps do it. The other Android permissions this
+      // app declares (storage, install-packages) are special/contextual ones
+      // Android expects to be requested only when the matching feature
+      // (local backup, in-app update) is actually used, not upfront.
+      try {
+        final granted =
+            await ref.read(notificationServiceProvider).ensurePermission();
+        if (granted) {
+          await settings.save((c) => c.copyWith(notificationsEnabled: true));
+        }
+      } catch (_) {
+        // Never let a permission prompt block getting into the app.
+      }
+
       await settings.save((c) => c.copyWith(onboardingComplete: true));
       if (!mounted) return;
       context.go('/dashboard');
     } catch (_) {
       if (!mounted) return;
       setState(() => _finishing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Something went wrong. Please try again.')),
-      );
+      context.showMessage('Something went wrong. Please try again.');
     }
   }
 
   void _onNext() {
     // The profile page (index 1) gently asks for a name before moving on.
     if (_page == 1 && _nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('A first name is all I need to continue.')),
-      );
+      context.showMessage('A first name is all I need to continue.');
       return;
     }
     if (_page < _pageCount - 1) {
@@ -139,7 +151,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 controller: _controller,
                 onPageChanged: (i) => setState(() => _page = i),
                 children: [
-                  _pageWelcome(text),
+                  _pageWelcome(context, text),
                   _pageProfile(text),
                   _pagePreferences(text),
                   _pageCloudSync(text),
@@ -173,7 +185,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
       );
 
-  Widget _pageWelcome(TextTheme text) => _pad(
+  Widget _pageWelcome(BuildContext context, TextTheme text) => _pad(
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -182,7 +194,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: SizedBox(
                 width: 88,
                 height: 88,
-                child: Image.asset(kBrandMarkAsset),
+                child: Image.asset(
+                  BrandMarks.of(context),
+                  excludeFromSemantics: true,
+                ),
               ),
             ),
             const SizedBox(height: Insets.xl),

@@ -9,10 +9,11 @@ import 'package:budgetsense/data/snapshot/snapshot_tables.dart';
 import 'package:budgetsense/domain/services/snapshot_service.dart';
 import 'package:budgetsense/features/settings/settings_state.dart';
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-AppDatabase _memDb() => AppDatabase.forTesting(NativeDatabase.memory());
+import '../support/test_database.dart';
+
+AppDatabase _memDb() => newTestDatabase();
 
 /// A representative settings blob covering unicode, enums, booleans, ints, empty
 /// strings, and null (localeCode) so the codecs are exercised on every scalar.
@@ -129,6 +130,9 @@ Future<void> _seed(AppDatabase db) async {
           frequency: 3,
           startDate: t,
           interestRateBps: const Value(875),
+          // Non-default on purpose: a flag left at its default would still
+          // "round-trip" even if it were never serialized at all.
+          showInUpcoming: const Value(true),
         ),
       );
   await db.into(db.customFields).insert(

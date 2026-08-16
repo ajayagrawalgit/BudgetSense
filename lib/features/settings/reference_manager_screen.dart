@@ -42,7 +42,7 @@ class ReferenceManagerBody extends StatelessWidget {
                 title: 'Nothing here yet',
                 message: emptyMessage,
                 icon: Icons.list_alt_outlined,
-                illustration: CalmIllustration.coin,
+                illustration: CalmIllustration.journal,
               )
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(
@@ -71,6 +71,7 @@ class ReferenceManagerBody extends StatelessWidget {
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 18),
+                          tooltip: 'Delete ${item.name}',
                           onPressed: () => onDelete(item.id),
                         ),
                       ],

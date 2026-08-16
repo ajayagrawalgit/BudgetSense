@@ -53,7 +53,7 @@ serialized and eligible for the non-destructive preference merge.
 | `localeCode`, `dateFormat`, `numberFormatCompact` | Formatting | MERGED |
 | `financialMonthStartDay` | Financial calendar | MERGED |
 | `themeVariant`, `accent`, `fontChoice` | Theme | MERGED |
-| `investmentTreatment` | Investment handling | MERGED |
+| `investmentTreatment`, `investmentTreatmentCustomLabel` | Investment handling | MERGED |
 | `reduceMotion`, `hapticsEnabled` | Accessibility | MERGED |
 | `appLockEnabled`, `biometricEnabled`, `screenSecurityEnabled` | Security prefs | INCLUDED (informational) |
 | `notificationsEnabled`, `paymentRemindersEnabled`, `thresholdAlertsEnabled`, `dailyRecordRemindersEnabled` | Notification toggles | MERGED |

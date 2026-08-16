@@ -44,6 +44,19 @@ class RecurringPaymentEntity with AuditableEntity {
   final bool reminderEnabled;
   final int reminderDaysBefore;
 
+  /// The day-of-month this commitment is really billed on.
+  ///
+  /// Anchors monthly and longer cadences so a short month cannot permanently
+  /// drag the schedule earlier: a payment on the 31st must take the 28th in
+  /// February and then return to the 31st, never decay to the 28th forever.
+  ///
+  /// Uses the later of [startDate] and [nextDueDate] day-of-month. Taking the
+  /// max is what makes this self-healing: [nextDueDate] may currently be a
+  /// clamped 28, but the original 31 survives in [startDate], so the intended
+  /// day is recovered rather than lost.
+  int get billingAnchorDay =>
+      startDate.day > nextDueDate.day ? startDate.day : nextDueDate.day;
+
   @override
   final DateTime createdAt;
   @override
@@ -133,6 +146,7 @@ class LoanEntity with AuditableEntity {
     this.nextPaymentDate,
     this.totalPaid = Money.zero,
     this.notes,
+    this.showInUpcoming = false,
     this.archivedAt,
     this.syncStatus = SyncStatus.localOnly,
   });
@@ -154,6 +168,16 @@ class LoanEntity with AuditableEntity {
   final Money totalPaid;
   final String? notes;
 
+  /// Opt-in: treat this EMI as a recurring commitment, so it appears in the
+  /// due / Upcoming lists next to subscriptions and rent.
+  ///
+  /// This is a *view* flag, not a second copy of the loan. No
+  /// [RecurringPaymentEntity] row is ever created for a loan: duplicating it
+  /// would double-count every EMI in monthly spend and leave two schedules
+  /// free to drift apart. The loan stays the single source of truth and the
+  /// lists simply read it.
+  final bool showInUpcoming;
+
   @override
   final DateTime createdAt;
   @override
@@ -166,6 +190,23 @@ class LoanEntity with AuditableEntity {
   double get interestRatePercent => interestRateBps / 100;
 
   Money get remaining => outstandingPrincipal;
+
+  /// The day-of-month the EMI is really due. See
+  /// [RecurringPaymentEntity.billingAnchorDay] for why the max is taken: it
+  /// lets a schedule clamped by February recover its original day.
+  int get billingAnchorDay {
+    final next = nextPaymentDate;
+    if (next == null) return startDate.day;
+    return startDate.day > next.day ? startDate.day : next.day;
+  }
+
+  /// Whether this loan currently has a live schedule to show in a due list.
+  /// An archived or fully-repaid loan has nothing left to fall due.
+  bool get isSchedulable =>
+      showInUpcoming &&
+      archivedAt == null &&
+      nextPaymentDate != null &&
+      !outstandingPrincipal.isZero;
 
   /// Fraction of the original principal repaid (0.0 to 1.0).
   double get repaymentProgress {
@@ -189,6 +230,7 @@ class LoanEntity with AuditableEntity {
     Object? nextPaymentDate = _unset,
     Money? totalPaid,
     Object? notes = _unset,
+    bool? showInUpcoming,
     DateTime? updatedAt,
     Object? archivedAt = _unset,
     SyncStatus? syncStatus,
@@ -209,6 +251,7 @@ class LoanEntity with AuditableEntity {
           : nextPaymentDate as DateTime?,
       totalPaid: totalPaid ?? this.totalPaid,
       notes: identical(notes, _unset) ? this.notes : notes as String?,
+      showInUpcoming: showInUpcoming ?? this.showInUpcoming,
       createdAt: createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       archivedAt: identical(archivedAt, _unset)

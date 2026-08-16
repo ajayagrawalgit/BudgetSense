@@ -11,8 +11,10 @@ import '../../core/constants/enums.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/app_log.dart';
 import '../../core/utils/financial_calendar.dart';
+import '../../core/utils/money.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../domain/services/export_service.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import '../settings/settings_controller.dart';
 
@@ -58,11 +60,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       AppLog.error('Export preview failed', error: e, stackTrace: s);
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Couldn't build the preview. Give it another go?"),
-        ),
-      );
+      context.showMessage("Couldn't build the preview. Give it another go?");
     }
   }
 
@@ -80,7 +78,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
         format: _format,
         scope: _scope,
         categoryName: (id) => nameById[id] ?? '',
-        currencySymbol: settings?.currencySymbol ?? '₹',
+        currencySymbol: settings?.currencySymbol ?? Money.defaultCurrencySymbol,
         locale: settings?.localeCode,
       );
 
@@ -98,11 +96,7 @@ class _ExportScreenState extends ConsumerState<ExportScreen> {
       AppLog.error('Export failed', error: e, stackTrace: s);
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("That export didn't go through. Give it another go?"),
-        ),
-      );
+      context.showMessage("That export didn't go through. Give it another go?");
     }
   }
 

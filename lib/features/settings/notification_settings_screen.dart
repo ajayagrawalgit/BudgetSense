@@ -10,6 +10,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/haptics.dart';
 import '../../core/utils/reminder_schedule.dart';
+import '../common/app_feedback.dart';
 import '../common/calm_widgets.dart';
 import 'settings_controller.dart';
 import 'settings_state.dart';
@@ -134,6 +135,23 @@ class NotificationSettingsScreen extends ConsumerWidget {
                         );
                       },
                     ),
+                    if (settings.thresholdAlertsEnabled)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.nights_stay_outlined),
+                        title: const Text('Threshold quiet hours'),
+                        subtitle: Text(
+                          '${_ScheduleEditor._formatMinute(settings.thresholdQuietStartMinute)} '
+                          'to ${_ScheduleEditor._formatMinute(settings.thresholdQuietEndMinute)}. '
+                          'Alerts reached then stay in the app, without a stale '
+                          'notification later.',
+                        ),
+                        onTap: () => _ScheduleEditor._editThresholdQuietHours(
+                          context,
+                          controller,
+                          settings,
+                        ),
+                      ),
                     const Divider(height: Insets.lg),
                     Row(
                       children: [
@@ -203,29 +221,16 @@ class NotificationSettingsScreen extends ConsumerWidget {
     final body = reminderMessages[rand.nextInt(reminderMessages.length)];
     await service.showNow(910001, title, body);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sent a sample reminder your way')),
-    );
+    context.showMessage('Sent a sample reminder your way');
   }
 
   Future<void> _rescheduleAll(BuildContext context, WidgetRef ref) async {
     Haptics.confirm();
     final service = ref.read(notificationServiceProvider);
-    final planner = ref.read(reminderPlannerProvider);
-    final now = DateTime.now();
-    final payments =
-        ref.read(recurringPaymentsStreamProvider).valueOrNull ?? const [];
-    final loans = ref.read(loansStreamProvider).valueOrNull ?? const [];
     final settings = ref.read(settingsControllerProvider).valueOrNull;
 
     await service.cancelAll();
-    final alerts = [
-      ...planner.planForPayments(payments, now: now),
-      ...planner.planForLoans(loans, now: now),
-    ];
-    for (final a in alerts) {
-      await service.schedule(a);
-    }
+    await reschedulePaymentReminders(ref);
     if (settings?.dailyRecordRemindersEnabled ?? true) {
       await service.scheduleExpenseReminders(
         schedule: settings?.reminderSchedule ?? const ReminderSchedule(),
@@ -234,13 +239,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
       );
     }
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Scheduled ${alerts.length} payment reminders plus your nudges',
-        ),
-      ),
-    );
+    context.showMessage('Payment reminders and nudges have been rescheduled');
   }
 }
 
@@ -371,6 +370,40 @@ class _ScheduleEditor extends StatelessWidget {
         DateTime.sunday => 'Sun',
         _ => 'Mon',
       };
+
+  static Future<void> _editThresholdQuietHours(
+    BuildContext context,
+    SettingsController controller,
+    SettingsState settings,
+  ) async {
+    final start = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.thresholdQuietStartMinute ~/ 60,
+        minute: settings.thresholdQuietStartMinute % 60,
+      ),
+      helpText: 'Quiet hours start',
+    );
+    if (start == null || !context.mounted) return;
+    final end = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(
+        hour: settings.thresholdQuietEndMinute ~/ 60,
+        minute: settings.thresholdQuietEndMinute % 60,
+      ),
+      helpText: 'Quiet hours end',
+    );
+    if (end == null) return;
+    await controller.save(
+      (current) => current.copyWith(
+        thresholdQuietStartMinute: start.hour * 60 + start.minute,
+        thresholdQuietEndMinute: end.hour * 60 + end.minute,
+      ),
+    );
+  }
+
+  static String _formatMinute(int minute) =>
+      _formatTime(minute ~/ 60, minute % 60);
 
   static String _formatTime(int h, int m) {
     final period = h < 12 ? 'AM' : 'PM';

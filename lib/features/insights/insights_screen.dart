@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/feature_providers.dart';
 import '../../app/providers.dart';
@@ -9,8 +10,9 @@ import '../../core/theme/theme_resolver.dart';
 import '../../core/utils/money.dart';
 import '../common/brand_watermark.dart';
 import '../common/calm_widgets.dart';
-import 'insights_cards.dart';
 import '../settings/settings_controller.dart';
+import '../settings/settings_state.dart';
+import 'insights_cards.dart';
 
 /// Insights & reports (Section 14). Every figure is computed locally from the
 /// same [monthlySummaryProvider] the dashboard uses - one source of truth, no
@@ -23,13 +25,12 @@ class InsightsScreen extends ConsumerWidget {
     final summary = ref.watch(monthlySummaryProvider);
     final categories =
         ref.watch(categoriesStreamProvider).valueOrNull ?? const [];
-    final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
-    final locale = settings?.localeCode;
+    final settings =
+        ref.watch(settingsControllerProvider).valueOrNull.orDefaults;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
-    String money(Money v) => v.format(currencySymbol: symbol, locale: locale);
+    String money(Money v) => settings.formatMoney(v);
 
     String categoryName(String id) {
       final match = categories.where((c) => c.id == id).firstOrNull;
@@ -47,7 +48,16 @@ class InsightsScreen extends ConsumerWidget {
 
     if (nothingYet) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Insights')),
+        appBar: AppBar(
+          title: const Text('Insights'),
+          actions: [
+            IconButton(
+              tooltip: 'Month close',
+              onPressed: () => context.push('/month-close'),
+              icon: const Icon(Icons.auto_stories_outlined),
+            ),
+          ],
+        ),
         body: const SafeArea(
           child: CalmEmptyState(
             title: 'Insights arrive with your first entries',
@@ -62,7 +72,16 @@ class InsightsScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Insights')),
+      appBar: AppBar(
+        title: const Text('Insights'),
+        actions: [
+          IconButton(
+            tooltip: 'Month close',
+            onPressed: () => context.push('/month-close'),
+            icon: const Icon(Icons.auto_stories_outlined),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: BrandWatermark(
           child: ListView(
@@ -218,9 +237,8 @@ class _TrendCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final points = ref.watch(insightsTrendProvider);
-    final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
-    final locale = settings?.localeCode;
+    final settings =
+        ref.watch(settingsControllerProvider).valueOrNull.orDefaults;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -263,7 +281,7 @@ class _TrendCard extends ConsumerWidget {
                     children: [
                       Text(p.monthKey, style: text.bodySmall),
                       Text(
-                        p.spent.format(currencySymbol: symbol, locale: locale),
+                        settings.formatMoney(p.spent),
                         style: text.labelMedium,
                       ),
                     ],
@@ -292,9 +310,8 @@ class _ProjectionCard extends ConsumerWidget {
     final calendar = ref.watch(financialCalendarProvider);
     final month = ref.watch(focusedMonthProvider);
     final service = ref.watch(insightsServiceProvider);
-    final settings = ref.watch(settingsControllerProvider).valueOrNull;
-    final symbol = settings?.currencySymbol ?? '₹';
-    final locale = settings?.localeCode;
+    final settings =
+        ref.watch(settingsControllerProvider).valueOrNull.orDefaults;
     final text = Theme.of(context).textTheme;
     final colors = context.colors;
 
@@ -318,7 +335,7 @@ class _ProjectionCard extends ConsumerWidget {
         : range.inclusiveDays;
     final isEarly = isCurrentMonth && elapsedDays < 5;
 
-    String money(Money v) => v.format(currencySymbol: symbol, locale: locale);
+    String money(Money v) => settings.formatMoney(v);
 
     return CalmCard(
       child: Column(
