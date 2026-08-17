@@ -118,7 +118,20 @@ jobs:
           secure_dir="${RUNNER_TEMP}/budgetsense-signing"
           mkdir -p "$secure_dir"
           chmod 700 "$secure_dir"
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$secure_dir/upload-keystore.jks"
+          # GitHub preserves pasted line endings in secrets. Base64 itself has
+          # no meaningful whitespace, so normalize it before decoding.
+          encoded="$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]')"
+          if ! printf '%s' "$encoded" | base64 --decode > "$secure_dir/upload-keystore.jks"; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not valid base64. Recreate it from the .jks file as one uninterrupted value."
+            exit 1
+          fi
+          if ! keytool -list \
+            -keystore "$secure_dir/upload-keystore.jks" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" >/dev/null 2>&1; then
+            echo "::error::Keystore validation failed. Check the keystore, alias, and store password secrets."
+            exit 1
+          fi
           cat > "$secure_dir/key.properties" <<EOF
           storeFile=$secure_dir/upload-keystore.jks
           storePassword=${ANDROID_KEYSTORE_PASSWORD}
