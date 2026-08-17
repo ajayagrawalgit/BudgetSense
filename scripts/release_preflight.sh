@@ -64,7 +64,7 @@ done < <(find . \
   -print)
 
 echo "==> Placeholder / debug-config scan"
-./scripts/check_placeholders.sh
+bash scripts/check_placeholders.sh
 
 if [[ $fail -ne 0 ]]; then
   echo "Release preflight FAILED."
