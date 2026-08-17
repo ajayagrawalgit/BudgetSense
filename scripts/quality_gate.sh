@@ -29,7 +29,7 @@ echo "==> Coverage gate (>=70% meaningful, no critical file at 0%)"
 python3 tool/coverage_report.py --threshold 70
 
 echo "==> Placeholder / debug-config scan"
-./scripts/check_placeholders.sh
+bash scripts/check_placeholders.sh
 
 echo ""
 echo "Quality gate PASSED."
