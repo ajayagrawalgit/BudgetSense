@@ -67,10 +67,12 @@ jobs:
       # ---------------------------------------------------------------
       # 1. Record the "before" picture so the PR body can explain itself.
       # ---------------------------------------------------------------
+      - name: Create deps directory
+        run: mkdir -p /tmp/deps
+
       - name: Snapshot current dependency state
         run: |
           set -euo pipefail
-          mkdir -p /tmp/deps
           cp pubspec.lock /tmp/deps/pubspec.lock.before
           flutter pub outdated --json > /tmp/deps/outdated.before.json || true
 
