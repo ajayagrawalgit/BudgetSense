@@ -109,9 +109,77 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Check if build number has reached 15 and bump version if needed
+      - name: Check and bump version if build count reaches 15
+        id: bump
+        if: steps.guard.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          build="${GITHUB_RUN_NUMBER}"
+          current_version="${{ steps.ver.outputs.name }}"
+          
+          echo "Current build: $build"
+          echo "Current version: $current_version"
+          
+          if [ "$build" -ge 15 ]; then
+            # Calculate new version: 0.1 -> 0.2, 0.2 -> 0.3, etc
+            major=$(echo "$current_version" | cut -d. -f1)
+            minor=$(echo "$current_version" | cut -d. -f2)
+            new_minor=$((minor + 1))
+            new_version="$major.$new_minor"
+            
+            echo "Version bump triggered at build $build"
+            echo "Bumping version from $current_version to $new_version"
+            
+            # Update AppInfo.version
+            sed -i "s/static const String version = '.*'/static const String version = '$new_version'/" lib/core/constants/app_info.dart
+            
+            # Update Android versionName
+            sed -i "s/versionName = \".*\"/versionName = \"$new_version\"/" android/app/build.gradle.kts
+            
+            # Update pubspec.yaml version (format: X.Y.Z+buildnumber, reset build to 15)
+            sed -i "s/^version: .*/version: $new_version.0+15/" pubspec.yaml
+            
+            # Verify the changes
+            echo "=== Updated AppInfo.version ==="
+            grep -E "version = '" lib/core/constants/app_info.dart | head -1
+            echo "=== Updated Android versionName ==="
+            grep -E '^\s*versionName = "' android/app/build.gradle.kts | head -1
+            echo "=== Updated pubspec.yaml version ==="
+            grep -E '^version:' pubspec.yaml
+            
+            echo "new_version=$new_version" >> "$GITHUB_OUTPUT"
+            echo "bumped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "bumped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Commit version bump back to main
+      - name: Commit version bump if needed
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib/core/constants/app_info.dart android/app/build.gradle.kts pubspec.yaml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} at build ${{ steps.ver.outputs.build }}"
+          git push
+
+      # Reload version after potential bump
+      - name: Reload version if bumped
+        if: steps.bump.outputs.bumped == 'true'
+        run: |
+          set -euo pipefail
+          name="$(grep -E "version = '" lib/core/constants/app_info.dart \
+            | head -1 | sed -E "s/.*version = '([^']*)'.*/\1/")"
+          echo "name=$name"           >> "$GITHUB_OUTPUT"
+          echo "build=${{ steps.ver.outputs.build }}" >> "$GITHUB_OUTPUT"
+          echo "tag=v$name-build.${{ steps.ver.outputs.build }}" >> "$GITHUB_OUTPUT"
+        id: ver_updated
+
       - name: Release preflight
         if: steps.guard.outputs.skip == 'false'
-        run: bash scripts/release_preflight.sh "${{ steps.ver.outputs.name }}"
+        run: bash scripts/release_preflight.sh "${{ steps.bump.outputs.bumped == 'true' && steps.ver_updated.outputs.name || steps.ver.outputs.name }}"
 
       - name: Assert signing secrets are configured
         if: steps.guard.outputs.skip == 'false'
@@ -167,12 +235,13 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         run: |
           set -euo pipefail
+          version_to_use="${{ steps.bump.outputs.bumped == 'true' && steps.ver_updated.outputs.name || steps.ver.outputs.name }}"
           flutter build apk --release \
-            --build-name="${{ steps.ver.outputs.name }}" \
+            --build-name="$version_to_use" \
             --build-number="${{ steps.ver.outputs.build }}"
           mkdir -p release-artifacts
           src="build/app/outputs/flutter-apk/app-release.apk"
-          out="BudgetSense-${{ steps.ver.outputs.name }}-production.apk"
+          out="BudgetSense-$version_to_use-production.apk"
           cp "$src" "release-artifacts/$out"
           # Stable filename so the README download button never goes stale.
           cp "$src" "release-artifacts/BudgetSense.apk"
@@ -199,8 +268,9 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         run: |
           set -euo pipefail
+          version_to_use="${{ steps.bump.outputs.bumped == 'true' && steps.ver_updated.outputs.name || steps.ver.outputs.name }}"
           python3 tool/release_notes.py \
-            --version "${{ steps.ver.outputs.name }}" \
+            --version "$version_to_use" \
             --build "${{ steps.ver.outputs.build }}" \
             --signed "true" \
             > /tmp/release-notes.md
@@ -210,8 +280,8 @@ jobs:
         if: steps.guard.outputs.skip == 'false'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          name: BudgetSense ${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.build }})
+          tag_name: ${{ steps.bump.outputs.bumped == 'true' && format('v{0}-build.{1}', steps.ver_updated.outputs.name, steps.ver.outputs.build) || format('v{0}-build.{1}', steps.ver.outputs.name, steps.ver.outputs.build) }}
+          name: BudgetSense ${{ steps.bump.outputs.bumped == 'true' && steps.ver_updated.outputs.name || steps.ver.outputs.name }} (build ${{ steps.ver.outputs.build }})
           body_path: /tmp/release-notes.md
           make_latest: true
           files: |
