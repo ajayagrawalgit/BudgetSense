@@ -278,7 +278,7 @@ jobs:
 
       - name: Publish release
         if: steps.guard.outputs.skip == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.bump.outputs.bumped == 'true' && format('v{0}-build.{1}', steps.ver_updated.outputs.name, steps.ver.outputs.build) || format('v{0}-build.{1}', steps.ver.outputs.name, steps.ver.outputs.build) }}
           name: BudgetSense ${{ steps.bump.outputs.bumped == 'true' && steps.ver_updated.outputs.name || steps.ver.outputs.name }} (build ${{ steps.ver.outputs.build }})
