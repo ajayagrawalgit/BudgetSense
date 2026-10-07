@@ -56,7 +56,7 @@ dependencies:
   collection: ^1.18.0
 
   # Opening external links (author credits, source repo)
-  url_launcher: ^6.3.0
+  url_launcher: ^6.3.3
   cryptography: ^2.7.0
   flutter_secure_storage: ^9.2.2
   http: ^1.2.0
